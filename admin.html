@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Cadence — Admin</title>
+<meta name="theme-color" content="#F7F8FC">
+<link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F7F8FC;--bg2:#FFFFFF;--bg3:#F0F1F7;--bg4:#E4E6F0;
+  --text:#1A1A2E;--text2:#454864;--text3:#6E7089;
+  --border:rgba(26,26,46,0.08);--border2:rgba(26,26,46,0.14);
+  --acc:#6C5FFF;--acc2:#00BFA6;
+  --gbg:#E3F9EC;--gt:#0D8A4F;--bbg:#E8F0FF;--bt:#2E5FCC;
+  --cbg:#FFE9E9;--ct:#D14D4D;
+  --r:14px;--rs:9px;
+  --grad:linear-gradient(135deg,var(--acc),var(--acc2));
+  --sh:0 4px 20px rgba(26,26,46,0.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;}
+
+/* LOGIN */
+#login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+#login-screen.hidden{display:none;}
+.login-card{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:36px 28px;width:100%;max-width:380px;text-align:center;box-shadow:var(--sh);}
+.login-h{font-family:'Sora',sans-serif;font-size:22px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.login-sub{font-size:13px;color:var(--text2);margin:6px 0 24px;}
+.login-input{width:100%;padding:13px 16px;border:1px solid var(--border2);border-radius:var(--rs);font-size:14px;background:var(--bg3);color:var(--text);font-family:inherit;outline:none;margin-bottom:12px;}
+.login-input:focus{border-color:var(--acc);}
+.login-btn{width:100%;padding:14px;background:var(--grad);color:#fff;border:none;border-radius:var(--rs);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+.login-err{font-size:12px;color:var(--ct);margin-top:10px;display:none;background:var(--cbg);padding:9px;border-radius:8px;text-align:left;}
+.login-note{font-size:11px;color:var(--text3);margin-top:16px;line-height:1.6;}
+
+/* DASHBOARD */
+#dashboard{display:none;}
+#dashboard.visible{display:block;}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(26,26,46,.06);flex-wrap:wrap;gap:10px;}
+.topbar-logo{font-family:'Sora',sans-serif;font-size:16px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.topbar-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.tb-btn{padding:8px 14px;border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;cursor:pointer;background:transparent;color:var(--text2);font-family:inherit;font-weight:600;transition:all .15s;}
+.tb-btn:hover{background:var(--bg3);color:var(--text);}
+.tb-btn.danger{color:var(--ct);border-color:var(--cbg);}
+
+.main{padding:20px 24px;max-width:1200px;margin:0 auto;}
+
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);}
+.stat-n{font-family:'Sora',sans-serif;font-size:26px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.stat-l{font-size:11px;color:var(--text2);margin-top:3px;text-transform:uppercase;letter-spacing:.06em;}
+
+.controls{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.search-box{flex:1;min-width:200px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rs);font-size:13px;color:var(--text);font-family:inherit;outline:none;}
+.search-box:focus{border-color:var(--acc);}
+.filter-sel{padding:10px 12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rs);font-size:12px;color:var(--text2);font-family:inherit;cursor:pointer;outline:none;}
+
+.table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:16px;}
+.table-head{background:var(--bg3);display:grid;grid-template-columns:1.6fr 1fr 1fr .9fr .7fr .7fr .4fr;padding:10px 16px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);border-bottom:1px solid var(--border);}
+.table-row{display:grid;grid-template-columns:1.6fr 1fr 1fr .9fr .7fr .7fr .4fr;padding:12px 16px;border-bottom:1px solid var(--border);align-items:center;cursor:pointer;transition:background .1s;}
+.table-row:last-child{border-bottom:none;}
+.table-row:hover{background:var(--bg3);}
+.cell-name{font-size:13px;font-weight:700;}
+.cell-sub{font-size:10px;color:var(--text2);margin-top:2px;}
+.badge-online{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--acc2);box-shadow:0 0 6px var(--acc2);margin-right:5px;}
+.badge-offline{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--text3);margin-right:5px;}
+.hide-mob{}
+@media(max-width:768px){
+  .table-head,.table-row{grid-template-columns:1.6fr 1fr .5fr .4fr;}
+  .hide-mob{display:none!important;}
+  .stats-row{grid-template-columns:repeat(2,1fr);}
+  .main{padding:12px;}
+  .topbar{padding:10px 14px;}
+}
+
+.modal-bg{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(20,22,36,.5);z-index:200;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;backdrop-filter:blur(4px);}
+.modal-bg.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:24px;width:100%;max-width:520px;box-shadow:var(--sh);}
+.modal h3{font-size:17px;font-weight:800;margin-bottom:4px;}
+.modal-close{float:right;background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;}
+.detail-item{background:var(--bg3);border-radius:var(--rs);padding:12px 14px;}
+.detail-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.detail-val{font-size:14px;font-weight:700;color:var(--text);word-break:break-word;}
+.section-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin:16px 0 8px;}
+.playlist-chip{display:inline-block;background:var(--bg3);border-radius:14px;padding:5px 12px;font-size:12px;margin:0 6px 6px 0;}
+.song-list{max-height:180px;overflow-y:auto;background:var(--bg3);border-radius:var(--rs);padding:4px 10px;}
+.song-row{padding:7px 2px;border-bottom:1px solid var(--border);font-size:12.5px;}
+.song-row:last-child{border-bottom:none;}
+.song-title{font-weight:600;color:var(--text);}
+.song-artist{color:var(--text2);}
+.playlist-details{background:var(--bg3);border-radius:var(--rs);margin-bottom:8px;padding:10px 12px;}
+.playlist-details summary{cursor:pointer;font-size:13px;font-weight:700;list-style:none;}
+.playlist-details summary::-webkit-details-marker{display:none;}
+.playlist-details summary::before{content:'▸ ';color:var(--text3);}
+.playlist-details[open] summary::before{content:'▾ ';}
+.playlist-details .song-list{margin-top:8px;background:var(--bg2);}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3);}
+.empty-icon{font-size:44px;margin-bottom:14px;}
+.empty-h{font-size:16px;font-weight:700;color:var(--text2);margin-bottom:6px;}
+.empty-s{font-size:13px;line-height:1.7;}
+.spinner{border:3px solid var(--border2);border-top:3px solid var(--acc);border-radius:50%;width:28px;height:28px;animation:spin .7s linear infinite;margin:40px auto;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.rules-box{background:var(--bg3);border-radius:12px;padding:14px;font-family:monospace;font-size:11px;color:#8A6100;margin-top:10px;white-space:pre;overflow-x:auto;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-h">Cadence Admin</div>
+    <div class="login-sub">Sign in with your admin account</div>
+    <input class="login-input" type="email" id="admin-email" placeholder="Admin email">
+    <input class="login-input" type="password" id="admin-pass" placeholder="Password" onkeydown="if(event.key==='Enter')tryLogin()">
+    <button class="login-btn" onclick="tryLogin()">Log in</button>
+    <div class="login-err" id="login-err"></div>
+    <div class="login-note">This is the same Firebase account you added to ADMIN_EMAILS in index.html. There's no separate admin password — Firebase verifies it, same as any user login.</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="topbar">
+    <div>
+      <div class="topbar-logo">Cadence Admin</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px;" id="last-refresh-label">Loading…</div>
+    </div>
+    <div class="topbar-right">
+      <button class="tb-btn" onclick="refreshData()">⟳ Refresh</button>
+      <button class="tb-btn" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="tb-btn danger" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="stats-row" id="stats-row">
+      <div class="stat-card"><div class="stat-n" id="stat-total">—</div><div class="stat-l">Total Users</div></div>
+      <div class="stat-card"><div class="stat-n" id="stat-active-today">—</div><div class="stat-l">Active Today</div></div>
+      <div class="stat-card"><div class="stat-n" id="stat-active-week">—</div><div class="stat-l">Active This Week</div></div>
+      <div class="stat-card"><div class="stat-n" id="stat-new-week">—</div><div class="stat-l">New This Week</div></div>
+      <div class="stat-card"><div class="stat-n" id="stat-hours">—</div><div class="stat-l">Total Hours Listened</div></div>
+    </div>
+
+    <div class="controls">
+      <input class="search-box" type="text" id="search" placeholder="🔍 Search by email…" oninput="renderTable()">
+      <select class="filter-sel" id="sort-by" onchange="renderTable()">
+        <option value="lastActive">Sort: Last active</option>
+        <option value="joined">Sort: Joined</option>
+        <option value="totalTime">Sort: Total time</option>
+        <option value="email">Sort: Email</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-head">
+        <div>Email</div><div>Joined</div><div class="hide-mob">Last active</div>
+        <div>Total time</div><div class="hide-mob">Liked</div><div class="hide-mob">Playlists</div><div></div>
+      </div>
+      <div id="user-table-body"><div class="spinner"></div></div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);text-align:center;padding:4px;" id="table-footer"></div>
+  </div>
+</div>
+
+<!-- USER DETAIL MODAL -->
+<div class="modal-bg" id="user-modal">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+      <div>
+        <h3 id="modal-email">User</h3>
+        <div style="font-size:12px;color:var(--text2);margin-top:3px;" id="modal-uid"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script>
+/* ================= CONFIG — must match index.html exactly ================= */
+const FIREBASE_CONFIG = {
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "0",
+  appId: "YOUR_APP_ID"
+};
+// Keep this identical to the ADMIN_EMAILS array in index.html.
+const ADMIN_EMAILS = ["YOUR_ADMIN_EMAIL@example.com"];
+/* ============================================================ */
+
+let auth, db, allUsers = [];
+
+try{
+  firebase.initializeApp(FIREBASE_CONFIG);
+  auth = firebase.auth();
+  db = firebase.firestore();
+}catch(e){
+  document.getElementById('login-err').textContent = 'Firebase config missing or invalid — fill in FIREBASE_CONFIG at the top of this file.';
+  document.getElementById('login-err').style.display = 'block';
+}
+
+function showErr(msg){
+  const e = document.getElementById('login-err');
+  e.textContent = msg;
+  e.style.display = 'block';
+}
+
+async function tryLogin(){
+  const email = document.getElementById('admin-email').value.trim();
+  const pass = document.getElementById('admin-pass').value;
+  if(!email || !pass){ showErr('Enter your admin email and password.'); return; }
+  try{
+    await auth.signInWithEmailAndPassword(email, pass);
+  }catch(e){
+    showErr(e.message);
+  }
+}
+function logout(){ auth.signOut(); }
+
+if(auth){
+  auth.onAuthStateChanged(user=>{
+    if(user && user.email && ADMIN_EMAILS.includes(user.email)){
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('dashboard').classList.add('visible');
+      loadData();
+    } else {
+      document.getElementById('dashboard').classList.remove('visible');
+      document.getElementById('login-screen').classList.remove('hidden');
+      if(user && user.email){
+        showErr(`Signed in as ${user.email}, but that account isn't in ADMIN_EMAILS. Add it in this file and in index.html, or sign in with the right account.`);
+        auth.signOut();
+      }
+    }
+  });
+}
+
+/* ── LOAD DATA ── */
+async function loadData(){
+  document.getElementById('user-table-body').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('last-refresh-label').textContent = 'Loading…';
+  try{
+    const snap = await db.collection('users').get();
+    if(snap.empty){
+      allUsers = [];
+      document.getElementById('user-table-body').innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-h">No users yet</div><div class="empty-s">Users appear here once they sign up in the app.</div></div>';
+      document.getElementById('last-refresh-label').textContent = 'No users found · ' + new Date().toLocaleTimeString();
+      renderStats();
+      return;
+    }
+    allUsers = await Promise.all(snap.docs.map(async d=>{
+      const u = d.data();
+      let likedCount = 0, playlistCount = 0;
+      try{ likedCount = (await db.collection('users').doc(d.id).collection('liked').get()).size; }catch(e){}
+      try{ playlistCount = (await db.collection('users').doc(d.id).collection('playlists').get()).size; }catch(e){}
+      return {
+        uid: d.id,
+        email: u.email || '(no email)',
+        createdAt: u.createdAt || null,
+        lastActiveAt: u.lastActiveAt || null,
+        totalSeconds: u.totalSeconds || 0,
+        likedCount, playlistCount
+      };
+    }));
+    renderStats();
+    renderTable();
+    document.getElementById('last-refresh-label').textContent = 'Refreshed: ' + new Date().toLocaleTimeString() + ' · ' + allUsers.length + ' user(s)';
+  }catch(e){
+    document.getElementById('user-table-body').innerHTML = `<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-h">Couldn't load users</div><div class="empty-s">${e.message}</div><div class="rules-box">match /users/{userId} {
+  allow read: if request.auth != null &&
+    (request.auth.uid == userId ||
+     request.auth.token.email in ["${ADMIN_EMAILS.join('","')}"]);
+  allow write: if request.auth != null && request.auth.uid == userId;
+  match /liked/{doc} { allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.email in ["${ADMIN_EMAILS.join('","')}"]); }
+  match /playlists/{doc} { allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.email in ["${ADMIN_EMAILS.join('","')}"]); }
+}</div></div>`;
+    document.getElementById('last-refresh-label').textContent = 'Error loading data';
+  }
+}
+function refreshData(){ loadData(); }
+
+/* ── STATS ── */
+function renderStats(){
+  const total = allUsers.length;
+  const now = Date.now();
+  const day = 86400000, week = 7*day;
+  const activeToday = allUsers.filter(u=>u.lastActiveAt && (now-u.lastActiveAt)<day).length;
+  const activeWeek = allUsers.filter(u=>u.lastActiveAt && (now-u.lastActiveAt)<week).length;
+  const newWeek = allUsers.filter(u=>u.createdAt && (now-u.createdAt)<week).length;
+  const totalHours = Math.round(allUsers.reduce((s,u)=>s+(u.totalSeconds||0),0)/3600 * 10)/10;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-active-today').textContent = activeToday;
+  document.getElementById('stat-active-week').textContent = activeWeek;
+  document.getElementById('stat-new-week').textContent = newWeek;
+  document.getElementById('stat-hours').textContent = totalHours;
+}
+
+/* ── TABLE ── */
+function fmtTime(totalSeconds){
+  const h = Math.floor((totalSeconds||0)/3600), m = Math.floor(((totalSeconds||0)%3600)/60);
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+function fmtRelative(ts){
+  if(!ts) return '—';
+  const mins = Math.floor((Date.now()-ts)/60000);
+  if(mins<1) return 'Now';
+  if(mins<60) return mins+'m';
+  if(mins<1440) return Math.floor(mins/60)+'h';
+  return Math.floor(mins/1440)+'d';
+}
+function renderTable(){
+  const q = (document.getElementById('search').value||'').toLowerCase();
+  const sortBy = document.getElementById('sort-by').value;
+  let list = [...allUsers];
+  if(q) list = list.filter(u=>u.email.toLowerCase().includes(q));
+  if(sortBy==='joined') list.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  else if(sortBy==='totalTime') list.sort((a,b)=>(b.totalSeconds||0)-(a.totalSeconds||0));
+  else if(sortBy==='email') list.sort((a,b)=>a.email.localeCompare(b.email));
+  else list.sort((a,b)=>(b.lastActiveAt||0)-(a.lastActiveAt||0));
+  document.getElementById('table-footer').textContent = `Showing ${list.length} of ${allUsers.length} users`;
+  if(!list.length){
+    document.getElementById('user-table-body').innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-h">No users match your search</div></div>';
+    return;
+  }
+  document.getElementById('user-table-body').innerHTML = list.map(rowHtml).join('');
+}
+function rowHtml(u){
+  const online = u.lastActiveAt && (Date.now()-u.lastActiveAt) < 3600000;
+  const joined = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—';
+  return `<div class="table-row" onclick="openUserModal('${u.uid}')">
+    <div><span class="${online?'badge-online':'badge-offline'}"></span><span class="cell-name">${escHtml(u.email)}</span></div>
+    <div style="font-size:12px;color:var(--text2);">${joined}</div>
+    <div class="hide-mob" style="font-size:12px;color:var(--text2);">${fmtRelative(u.lastActiveAt)}</div>
+    <div style="font-size:13px;font-weight:700;">${fmtTime(u.totalSeconds)}</div>
+    <div class="hide-mob" style="font-size:12px;">${u.likedCount}</div>
+    <div class="hide-mob" style="font-size:12px;">${u.playlistCount}</div>
+    <div style="font-size:16px;color:var(--text3);">›</div>
+  </div>`;
+}
+function escHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ── DETAIL MODAL ── */
+let modalUid = null;
+async function openUserModal(uid){
+  const u = allUsers.find(x=>x.uid===uid);
+  if(!u) return;
+  modalUid = uid;
+  document.getElementById('modal-email').textContent = u.email;
+  document.getElementById('modal-uid').textContent = 'UID: ' + u.uid;
+  document.getElementById('modal-body').innerHTML = `
+    <div class="detail-grid">
+      <div class="detail-item"><div class="detail-label">Joined</div><div class="detail-val">${u.createdAt?new Date(u.createdAt).toLocaleString():'—'}</div></div>
+      <div class="detail-item"><div class="detail-label">Last active</div><div class="detail-val">${u.lastActiveAt?new Date(u.lastActiveAt).toLocaleString():'—'}</div></div>
+      <div class="detail-item"><div class="detail-label">Total time</div><div class="detail-val">${fmtTime(u.totalSeconds)}</div></div>
+      <div class="detail-item"><div class="detail-label">Liked songs</div><div class="detail-val">${u.likedCount}</div></div>
+    </div>
+    <div class="section-title">Liked songs</div>
+    <div id="modal-liked" class="song-list"><div class="spinner" style="margin:16px auto;"></div></div>
+    <div class="section-title">Playlists</div>
+    <div id="modal-playlists"><div class="spinner" style="margin:16px auto;"></div></div>
+    <div class="section-title">Danger zone</div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px;">
+      This deletes this user's app data (liked songs, playlists, follows, profile record) from Firestore.
+      It does <b>not</b> delete their actual login account — a client app can never delete another user's
+      Firebase Authentication account; that requires the Firebase Admin SDK on a server, which this static
+      site doesn't have. They'd still be able to log in with an empty library afterward.
+    </div>
+    <button class="tb-btn danger" style="width:100%;" onclick="deleteUserData('${u.uid}')">🗑️ Delete this user's app data</button>
+  `;
+  document.getElementById('user-modal').classList.add('open');
+  loadUserSongs(uid);
+}
+async function loadUserSongs(uid){
+  // Liked songs — each doc in users/{uid}/liked already stores the full track (title, artist).
+  try{
+    const likedSnap = await db.collection('users').doc(uid).collection('liked').get();
+    const likedEl = document.getElementById('modal-liked');
+    if(modalUid!==uid || !likedEl) return;
+    if(likedSnap.empty){ likedEl.innerHTML = '<div style="font-size:12px;color:var(--text3);">No liked songs.</div>'; }
+    else{
+      likedEl.innerHTML = likedSnap.docs.map(d=>{
+        const t = d.data();
+        return `<div class="song-row"><span class="song-title">${escHtml(t.title||'Untitled')}</span><span class="song-artist"> — ${escHtml(t.artist||'')}</span></div>`;
+      }).join('');
+    }
+  }catch(e){
+    const likedEl = document.getElementById('modal-liked');
+    if(likedEl) likedEl.innerHTML = `<div style="font-size:12px;color:var(--ct);">Couldn't load: ${escHtml(e.message)}</div>`;
+  }
+
+  // Playlists — each doc stores tracksMap inline, so no extra subcollection queries needed.
+  try{
+    const plSnap = await db.collection('users').doc(uid).collection('playlists').get();
+    const plEl = document.getElementById('modal-playlists');
+    if(modalUid!==uid || !plEl) return;
+    if(plSnap.empty){ plEl.innerHTML = '<div style="font-size:12px;color:var(--text3);">No playlists.</div>'; return; }
+    plEl.innerHTML = plSnap.docs.map(d=>{
+      const p = d.data();
+      const tracks = Object.values(p.tracksMap||{});
+      const songsHtml = tracks.length
+        ? tracks.map(t=>`<div class="song-row"><span class="song-title">${escHtml(t.title||'Untitled')}</span><span class="song-artist"> — ${escHtml(t.artist||'')}</span></div>`).join('')
+        : '<div style="font-size:12px;color:var(--text3);padding:6px 0;">Empty playlist.</div>';
+      return `<details class="playlist-details">
+        <summary>${escHtml(p.name||'Untitled playlist')} <span style="color:var(--text3);">(${tracks.length})</span></summary>
+        <div class="song-list">${songsHtml}</div>
+      </details>`;
+    }).join('');
+  }catch(e){
+    const plEl = document.getElementById('modal-playlists');
+    if(plEl) plEl.innerHTML = `<div style="font-size:12px;color:var(--ct);">Couldn't load: ${escHtml(e.message)}</div>`;
+  }
+}
+function closeModal(){ document.getElementById('user-modal').classList.remove('open'); modalUid = null; }
+async function deleteUserData(uid){
+  if(!confirm("Permanently delete this user's liked songs, playlists, follows, and profile record? This cannot be undone.")) return;
+  try{
+    const ref = db.collection('users').doc(uid);
+    for(const sub of ['liked','playlists','follows']){
+      const docs = await ref.collection(sub).get();
+      await Promise.all(docs.docs.map(d=>d.ref.delete()));
+    }
+    await ref.delete();
+    closeModal();
+    refreshData();
+  }catch(e){
+    alert('Failed to delete: ' + e.message);
+  }
+}
+
+/* ── EXPORT ── */
+function exportCSV(){
+  const rows = [['Email','Joined','Last Active','Total Seconds','Liked Songs','Playlists']];
+  allUsers.forEach(u=>rows.push([
+    u.email,
+    u.createdAt?new Date(u.createdAt).toISOString():'',
+    u.lastActiveAt?new Date(u.lastActiveAt).toISOString():'',
+    u.totalSeconds||0, u.likedCount, u.playlistCount
+  ]));
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'cadence-users.csv';
+  a.click();
+}
+</script>
+</body>
+</html>
