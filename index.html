@@ -79,6 +79,7 @@ a{color:inherit;}
   max-width:520px;
   margin:0 auto;
   position:relative;
+  isolation:isolate;
   background:var(--bg);
 }
 
@@ -222,6 +223,27 @@ a{color:inherit;}
 .skeleton{background:linear-gradient(90deg,var(--surface) 0%,var(--surface-2) 50%,var(--surface) 100%);
   background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:var(--radius-sm);}
 @keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+
+
+/* ---------- Flowing wave background (shows while music is playing) ---------- */
+:root{--wave-rgb:156,140,255;}
+.wave-bg{
+  position:absolute;left:0;right:0;bottom:0;height:48%;z-index:-1;
+  pointer-events:none;overflow:hidden;opacity:0;
+  transition:opacity 700ms ease;transform-origin:bottom center;
+}
+body.music-playing .wave-bg{opacity:1;}
+.wave-bg svg{position:absolute;left:0;bottom:0;width:300%;height:100%;will-change:transform;}
+.wave-bg path{fill:rgba(var(--wave-rgb),0.2);}
+.wave-bg .w2 path{fill:rgba(var(--wave-rgb),0.15);}
+.wave-bg .w3 path{fill:rgba(var(--wave-rgb),0.11);}
+.wave-bg .w1{animation:waveSlide 12s linear infinite;}
+.wave-bg .w2{animation:waveSlide 18s linear infinite reverse;}
+.wave-bg .w3{animation:waveSlide 26s linear infinite;}
+@keyframes waveSlide{from{transform:translateX(0);}to{transform:translateX(-33.3333%);}}
+.wave-bg-fp{z-index:0;height:60%;}
+.fullplayer.playing .wave-bg-fp{opacity:1;}
+body.reduced-motion .wave-bg{display:none;}
 
 /* ---------- Bottom nav ---------- */
 .bottomnav{
@@ -442,6 +464,17 @@ a{color:inherit;}
   padding:10px 12px;border-radius:8px;margin-top:14px;line-height:1.5;
 }
 
+/* ---------- YouTube fallback (search only, ad-supported, plays via embedded iframe) ---------- */
+.yt-section{margin-top:18px;padding-top:14px;border-top:1px solid rgba(22,26,46,0.08);}
+.yt-section-head{font-size:12px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;}
+.yt-section-head .yt-note{font-weight:400;text-transform:none;letter-spacing:0;}
+.yt-row{border-radius:10px;overflow:hidden;}
+.yt-row-summary{display:flex;align-items:center;gap:12px;padding:8px 4px;cursor:pointer;color:inherit;}
+.yt-row-summary:hover{background:var(--surface);}
+.yt-thumb{width:64px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--surface-2);}
+.yt-embed-wrap{position:relative;width:100%;padding-top:56.25%;margin:4px 0 10px;border-radius:10px;overflow:hidden;background:#000;}
+.yt-embed-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+
 /* ---------- Add-to-playlist sheet ---------- */
 .sheet-overlay{
   position:fixed;inset:0;background:rgba(22,26,46,0.35);
@@ -642,6 +675,7 @@ a{color:inherit;}
 </div>
 
 <div id="app">
+  <div class="wave-bg" id="appWaves"></div>
 
   <div class="offline-banner" id="offlineBanner">You're offline — playback and search may not work until you're back online</div>
   <div class="topbar">
@@ -737,6 +771,11 @@ a{color:inherit;}
       <div class="section">
         <div class="section-head"><h2>Fresh picks</h2></div>
         <div class="rail" id="rail-fresh"><div class="skeleton" style="width:132px;height:132px;"></div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h2>Discover more (Audius)</h2></div>
+        <div class="rail" id="rail-audius"><div class="skeleton" style="width:132px;height:132px;"></div></div>
       </div>
 
       <div class="section">
@@ -845,7 +884,7 @@ a{color:inherit;}
 
   <!-- FULL PLAYER -->
   <div class="fullplayer" id="fullplayer">
-    <div class="bg-waves" id="bgWaves"><span></span><span></span><span></span></div>
+    <div class="bg-waves" id="bgWaves"><span></span><span></span><span></span><div class="wave-bg wave-bg-fp" id="fpWaves"></div></div>
     <div class="fp-top">
       <button onclick="closeFullPlayer()">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
@@ -996,6 +1035,20 @@ const CUSTOM_TRACKS = [
   //   duration: 180
   // },
 ];
+
+// Audius: a second, free, no-key catalog (independent/underground artists — a
+// different pool of real, legally streamable music than Jamendo, not mainstream
+// label catalogs). app_name is just good API etiquette, not a real credential.
+const AUDIUS_APP_NAME = "Cadence";
+const AUDIUS_BASE = "https://discoveryprovider.audius.co/v1";
+
+// YouTube: fallback for songs that aren't on Jamendo/Audius (e.g. mainstream
+// label releases). This plays through YouTube's own embedded player, not your
+// app's audio player — so those ads are YouTube's/the label's, not something
+// this app adds or profits from. Get a free key at console.cloud.google.com
+// (enable "YouTube Data API v3", create an API key — no billing required for
+// the free daily quota).
+const YOUTUBE_API_KEY = "AIzaSyA6an_GN9LKWfcJCtxhbr8zQuPDnxwbk-o";
 const FIREBASE_CONFIG = {
   apiKey: "YOUR_FIREBASE_API_KEY",
   authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -1138,6 +1191,73 @@ function trackFromJamendo(r){
   };
 }
 
+/* ---------------- Audius (second, free catalog) ---------------- */
+function trackFromAudius(r){
+  const art = r.artwork ? (r.artwork['480x480'] || r.artwork['150x150'] || r.artwork['1000x1000']) : '';
+  return {
+    id: 'audius-' + r.id,
+    title: r.title,
+    artist: (r.user && r.user.name) || 'Unknown artist',
+    art: art || '',
+    audio: `${AUDIUS_BASE}/tracks/${r.id}/stream?app_name=${encodeURIComponent(AUDIUS_APP_NAME)}`,
+    duration: r.duration || 0
+  };
+}
+async function audiusFetch(path, params){
+  const qs = new URLSearchParams({app_name: AUDIUS_APP_NAME, ...params});
+  const res = await fetch(`${AUDIUS_BASE}${path}?${qs.toString()}`);
+  if(!res.ok) throw new Error('Audius request failed');
+  const json = await res.json();
+  return (json.data || []).map(trackFromAudius);
+}
+function audiusSearch(query, limit){ return audiusFetch('/tracks/search', {query, limit: limit||20}); }
+function audiusTrending(genre, limit){ return audiusFetch('/tracks/trending', genre ? {genre, limit: limit||20} : {limit: limit||20}); }
+
+/* ---------------- YouTube (ad-supported fallback, embedded player) ---------------- */
+async function youtubeSearch(query, maxResults){
+  if(YOUTUBE_API_KEY === "YOUR_YOUTUBE_API_KEY") return []; // not configured — just skip, don't break search
+  const qs = new URLSearchParams({
+    part: 'snippet', type: 'video', videoCategoryId: '10', // 10 = Music
+    maxResults: maxResults || 6, q: query, key: YOUTUBE_API_KEY
+  });
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/search?${qs.toString()}`);
+  if(!res.ok) throw new Error('YouTube request failed');
+  const json = await res.json();
+  return (json.items || []).map(v => ({
+    videoId: v.id.videoId,
+    title: v.snippet.title,
+    channel: v.snippet.channelTitle,
+    thumb: v.snippet.thumbnails && (v.snippet.thumbnails.medium || v.snippet.thumbnails.default).url
+  }));
+}
+function youtubeSectionHTML(videos){
+  if(!videos.length) return '';
+  return `
+    <div class="yt-section">
+      <div class="yt-section-head">Watch on YouTube <span class="yt-note">(plays with YouTube's own ads)</span></div>
+      ${videos.map(v => `
+        <div class="yt-row" id="yt-row-${esc(v.videoId)}">
+          <div class="yt-row-summary" onclick="toggleYoutubeEmbed('${esc(v.videoId)}')">
+            <img class="yt-thumb" src="${esc(v.thumb||'')}" loading="lazy">
+            <div class="meta"><div class="t">${esc(v.title)}</div><div class="a">${esc(v.channel)}</div></div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+function toggleYoutubeEmbed(videoId){
+  const row = document.getElementById('yt-row-' + videoId);
+  if(!row) return;
+  const existing = row.querySelector('.yt-embed-wrap');
+  if(existing){ existing.remove(); return; } // tap again to close
+  document.querySelectorAll('.yt-embed-wrap').forEach(el => el.remove()); // only one playing at a time
+  const wrap = document.createElement('div');
+  wrap.className = 'yt-embed-wrap';
+  wrap.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+  row.appendChild(wrap);
+}
+
 function getTimeBucket(){
   const h = new Date().getHours();
   if(h<12) return {label:'Start your day', tags:'acoustic'};
@@ -1149,6 +1269,7 @@ async function loadHome(){
   const trendingEl = document.getElementById('rail-trending');
   const freshEl = document.getElementById('rail-fresh');
   const timeEl = document.getElementById('rail-timeaware');
+  const audiusEl = document.getElementById('rail-audius');
   const genreEl = document.getElementById('genre-chips');
   genreEl.innerHTML = GENRES.map(g=>`<button class="chip" onclick="searchFor('${g}')">${g}</button>`).join('');
   renderHomeAlbums();
@@ -1161,6 +1282,7 @@ async function loadHome(){
   trendingEl.innerHTML = railSkeletonHTML();
   freshEl.innerHTML = railSkeletonHTML();
   if(timeEl) timeEl.innerHTML = railSkeletonHTML();
+  if(audiusEl) audiusEl.innerHTML = railSkeletonHTML();
 
   try{
     const [pop, recent, timeRes] = await Promise.all([
@@ -1178,6 +1300,17 @@ async function loadHome(){
     trendingEl.innerHTML = msg;
     freshEl.innerHTML = '';
     if(timeEl) timeEl.innerHTML = '';
+  }
+
+  // Separate try/catch: Audius being down (or blocked by a network/firewall) should
+  // never take out the Jamendo rails above, and vice versa.
+  if(audiusEl){
+    try{
+      const tracks = await audiusTrending();
+      renderRail(audiusEl, tracks);
+    }catch(e){
+      audiusEl.innerHTML = `<div class="state-block"><div class="icon">⚠</div><div class="title">Couldn't load Audius tracks</div><div class="sub">Check your connection and try again.</div></div>`;
+    }
   }
 }
 async function renderHomeAlbums(){
@@ -1352,11 +1485,15 @@ async function doSearch(q){
         const res = await jamendo('tracks', {namesearch:q, limit:20});
         jamendoTracks = res.results.map(trackFromJamendo);
       }catch(e){ jamendoErr = e; }
-      const tracks = [...customMatches, ...jamendoTracks];
-      if(tracks.length){
-        el.innerHTML = tracks.map((t,i)=>listRow(t,i,tracks)).join('');
+      let audiusTracks = [];
+      try{ audiusTracks = await audiusSearch(q, 20); }catch(e){ /* Audius down — just show what we have from elsewhere */ }
+      let ytVideos = [];
+      try{ ytVideos = await youtubeSearch(q, 6); }catch(e){ /* YouTube down/not configured — just skip it */ }
+      const tracks = [...customMatches, ...jamendoTracks, ...audiusTracks];
+      if(tracks.length || ytVideos.length){
+        el.innerHTML = (tracks.length ? tracks.map((t,i)=>listRow(t,i,tracks)).join('') : '') + youtubeSectionHTML(ytVideos);
       } else if(jamendoErr){
-        throw jamendoErr; // no custom matches either — fall through to the existing error message below
+        throw jamendoErr; // no matches anywhere — fall through to the existing error message below
       } else {
         el.innerHTML = noResultsHTML(q);
       }
@@ -1851,6 +1988,7 @@ function updatePlayIcons(){
   if(fpArt) fpArt.classList.toggle('spinning', isPlaying);
   const fpArtWrap = document.querySelector('.fp-art-wrap');
   if(fpArtWrap) fpArtWrap.classList.toggle('playing', isPlaying);
+  document.body.classList.toggle('music-playing', !!isPlaying);
   const fullplayerEl = document.getElementById('fullplayer');
   if(fullplayerEl){
     fullplayerEl.classList.toggle('playing', isPlaying);
@@ -1916,14 +2054,33 @@ function extractDominantColor(imgUrl, callback){
 function updateArtTheme(artUrl){
   const glow = document.querySelector('.fp-glow');
   const fullplayerEl = document.getElementById('fullplayer');
-  if(!glow) return;
   extractDominantColor(artUrl, (rgb)=>{
+    document.documentElement.style.setProperty('--wave-rgb', rgb || '156,140,255');
+    if(!glow) return;
     glow.style.background = rgb
       ? `radial-gradient(circle, rgba(${rgb},0.45), transparent 70%)`
       : '';
     if(fullplayerEl) fullplayerEl.style.setProperty('--wave-rgb', rgb || '156,140,255');
   });
 }
+
+
+/* ---------- Wave background: build layers, tint, and audio-reactive height ---------- */
+function wavePathD(base, amp, period, total){
+  let d = `M0,${base} Q${period/4},${base-amp} ${period/2},${base}`;
+  for(let x=period; x<=total; x+=period/2) d += ` T${x},${base}`;
+  return d + ' V200 H0 Z';
+}
+function waveLayersHTML(){
+  const layers = [ {c:'w1', base:110, amp:60}, {c:'w2', base:125, amp:42}, {c:'w3', base:95, amp:-50} ];
+  return layers.map(l =>
+    `<svg class="${l.c}" viewBox="0 0 1800 200" preserveAspectRatio="none"><path d="${wavePathD(l.base, l.amp, 300, 1800)}"/></svg>`
+  ).join('');
+}
+(function initWaves(){
+  const html = waveLayersHTML();
+  ['appWaves','fpWaves'].forEach(id=>{ const el = document.getElementById(id); if(el) el.innerHTML = html; });
+})();
 
 /* ---------- Background wave — real audio-reactive pulse when the EQ graph exists ---------- */
 let bgWaveRAF = null;
@@ -1941,6 +2098,8 @@ function startBgWaveAudioReactive(){
     const avg = sum / data.length / 255;
     bg.style.transform = `scale(${1 + avg*0.15})`;
     bg.style.opacity = String(0.55 + avg*0.45);
+    const appW = document.getElementById('appWaves');
+    if(appW) appW.style.transform = `scaleY(${1 + avg*0.45})`;
   }
   loop();
 }
@@ -1948,6 +2107,8 @@ function stopBgWaveAudioReactive(){
   if(bgWaveRAF){ cancelAnimationFrame(bgWaveRAF); bgWaveRAF = null; }
   const bg = document.getElementById('bgWaves');
   if(bg){ bg.style.transform = ''; bg.style.opacity = ''; }
+  const appW = document.getElementById('appWaves');
+  if(appW) appW.style.transform = '';
 }
 
 /* ---------- Now-playing equalizer indicators (list rows / rail cards) ---------- */
