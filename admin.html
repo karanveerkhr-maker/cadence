@@ -119,7 +119,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,
     <input class="login-input" type="password" id="admin-pass" placeholder="Password" onkeydown="if(event.key==='Enter')tryLogin()">
     <button class="login-btn" onclick="tryLogin()">Log in</button>
     <div class="login-err" id="login-err"></div>
-    <div class="login-note">This is the same Firebase account you added to ADMIN_EMAILS in index.html. There's no separate admin password — Firebase verifies it, same as any user login.</div>
+    <div class="login-note">Use the account you added to the <b>admins</b> table in Supabase. There is no separate admin password.</div>
   </div>
 </div>
 
@@ -181,110 +181,52 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,
   </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script>
-/* ================= CONFIG — must match index.html exactly ================= */
-const FIREBASE_CONFIG = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "0",
-  appId: "YOUR_APP_ID"
-};
-// Keep this identical to the ADMIN_EMAILS array in index.html.
-const ADMIN_EMAILS = ["YOUR_ADMIN_EMAIL@example.com"];
-/* ============================================================ */
-
-let auth, db, allUsers = [];
-
-try{
-  firebase.initializeApp(FIREBASE_CONFIG);
-  auth = firebase.auth();
-  db = firebase.firestore();
-}catch(e){
-  document.getElementById('login-err').textContent = 'Firebase config missing or invalid — fill in FIREBASE_CONFIG at the top of this file.';
-  document.getElementById('login-err').style.display = 'block';
-}
-
-function showErr(msg){
-  const e = document.getElementById('login-err');
-  e.textContent = msg;
-  e.style.display = 'block';
-}
-
-async function tryLogin(){
-  const email = document.getElementById('admin-email').value.trim();
-  const pass = document.getElementById('admin-pass').value;
-  if(!email || !pass){ showErr('Enter your admin email and password.'); return; }
-  try{
-    await auth.signInWithEmailAndPassword(email, pass);
-  }catch(e){
-    showErr(e.message);
+/* ===== CONFIG: the same Supabase URL + anon key as index.html ===== */
+const SB_URL = "", SB_KEY = "";
+let S = JSON.parse(localStorage.getItem('cadence_admin') || 'null'), allUsers = [];
+const $ = id => document.getElementById(id);
+const hdr = x => ({ apikey: SB_KEY, Authorization: 'Bearer ' + (S ? S.access_token : SB_KEY), ...x });
+function showErr(m){ const e = $('login-err'); e.textContent = m; e.style.display = 'block'; }
+async function sb(path, o = {}, retry = true){
+  const r = await fetch(SB_URL + path, { ...o, headers: hdr(o.headers) });
+  if (r.status === 401 && retry && S) {
+    const t = await fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: S.refresh_token }) });
+    if (t.ok) { const d = await t.json(); S = { access_token: d.access_token, refresh_token: d.refresh_token }; localStorage.setItem('cadence_admin', JSON.stringify(S)); return sb(path, o, false); }
+    logout();
   }
+  return r;
 }
-function logout(){ auth.signOut(); }
-
-if(auth){
-  auth.onAuthStateChanged(user=>{
-    if(user && user.email && ADMIN_EMAILS.includes(user.email)){
-      document.getElementById('login-screen').classList.add('hidden');
-      document.getElementById('dashboard').classList.add('visible');
-      loadData();
-    } else {
-      document.getElementById('dashboard').classList.remove('visible');
-      document.getElementById('login-screen').classList.remove('hidden');
-      if(user && user.email){
-        showErr(`Signed in as ${user.email}, but that account isn't in ADMIN_EMAILS. Add it in this file and in index.html, or sign in with the right account.`);
-        auth.signOut();
-      }
-    }
-  });
+async function tryLogin(){
+  if (!SB_URL || !SB_KEY) return showErr('Fill in SB_URL and SB_KEY at the top of the script in admin.html.');
+  const email = $('admin-email').value.trim(), password = $('admin-pass').value;
+  if (!email || !password) return showErr('Enter your admin email and password.');
+  const r = await fetch(SB_URL + '/auth/v1/token?grant_type=password', { method: 'POST', headers: { apikey: SB_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+  const d = await r.json();
+  if (!r.ok) return showErr(d.error_description || d.msg || 'Sign in failed.');
+  S = { access_token: d.access_token, refresh_token: d.refresh_token }; localStorage.setItem('cadence_admin', JSON.stringify(S));
+  enter();
 }
+function logout(){ S = null; localStorage.removeItem('cadence_admin'); $('dashboard').classList.remove('visible'); $('login-screen').classList.remove('hidden'); }
+async function enter(){
+  const r = await sb('/rest/v1/admins?select=user_id');
+  if (!r.ok || !(await r.json()).length) { showErr("This account isn't an admin. Add its user id to the admins table in Supabase."); return logout(); }
+  $('login-screen').classList.add('hidden'); $('dashboard').classList.add('visible'); loadData();
+}
+if (S && SB_URL) enter();
 
 /* ── LOAD DATA ── */
 async function loadData(){
-  document.getElementById('user-table-body').innerHTML = '<div class="spinner"></div>';
-  document.getElementById('last-refresh-label').textContent = 'Loading…';
-  try{
-    const snap = await db.collection('users').get();
-    if(snap.empty){
-      allUsers = [];
-      document.getElementById('user-table-body').innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-h">No users yet</div><div class="empty-s">Users appear here once they sign up in the app.</div></div>';
-      document.getElementById('last-refresh-label').textContent = 'No users found · ' + new Date().toLocaleTimeString();
-      renderStats();
-      return;
-    }
-    allUsers = await Promise.all(snap.docs.map(async d=>{
-      const u = d.data();
-      let likedCount = 0, playlistCount = 0;
-      try{ likedCount = (await db.collection('users').doc(d.id).collection('liked').get()).size; }catch(e){}
-      try{ playlistCount = (await db.collection('users').doc(d.id).collection('playlists').get()).size; }catch(e){}
-      return {
-        uid: d.id,
-        email: u.email || '(no email)',
-        createdAt: u.createdAt || null,
-        lastActiveAt: u.lastActiveAt || null,
-        totalSeconds: u.totalSeconds || 0,
-        likedCount, playlistCount
-      };
-    }));
-    renderStats();
-    renderTable();
-    document.getElementById('last-refresh-label').textContent = 'Refreshed: ' + new Date().toLocaleTimeString() + ' · ' + allUsers.length + ' user(s)';
-  }catch(e){
-    document.getElementById('user-table-body').innerHTML = `<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-h">Couldn't load users</div><div class="empty-s">${e.message}</div><div class="rules-box">match /users/{userId} {
-  allow read: if request.auth != null &&
-    (request.auth.uid == userId ||
-     request.auth.token.email in ["${ADMIN_EMAILS.join('","')}"]);
-  allow write: if request.auth != null && request.auth.uid == userId;
-  match /liked/{doc} { allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.email in ["${ADMIN_EMAILS.join('","')}"]); }
-  match /playlists/{doc} { allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.email in ["${ADMIN_EMAILS.join('","')}"]); }
-}</div></div>`;
-    document.getElementById('last-refresh-label').textContent = 'Error loading data';
+  $('user-table-body').innerHTML = '<div class="spinner"></div>';
+  $('last-refresh-label').textContent = 'Loading…';
+  const r = await sb('/rest/v1/user_data?select=user_id,email,total_seconds,created_at,last_active_at,liked_count,playlist_count&order=last_active_at.desc');
+  if (!r.ok) {
+    $('user-table-body').innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-h">Couldn\'t load users</div><div class="empty-s">Run supabase-users.sql in Supabase and make sure this account is in the admins table.</div></div>';
+    $('last-refresh-label').textContent = 'Error loading data'; return;
   }
+  allUsers = (await r.json()).map(u => ({ uid: u.user_id, email: u.email || '(no email)', createdAt: Date.parse(u.created_at) || null, lastActiveAt: Date.parse(u.last_active_at) || null, totalSeconds: Number(u.total_seconds) || 0, likedCount: u.liked_count || 0, playlistCount: u.playlist_count || 0 }));
+  renderStats(); renderTable();
+  $('last-refresh-label').textContent = 'Refreshed: ' + new Date().toLocaleTimeString() + ' · ' + allUsers.length + ' user(s)';
 }
 function refreshData(){ loadData(); }
 
@@ -369,10 +311,7 @@ async function openUserModal(uid){
     <div id="modal-playlists"><div class="spinner" style="margin:16px auto;"></div></div>
     <div class="section-title">Danger zone</div>
     <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px;">
-      This deletes this user's app data (liked songs, playlists, follows, profile record) from Firestore.
-      It does <b>not</b> delete their actual login account — a client app can never delete another user's
-      Firebase Authentication account; that requires the Firebase Admin SDK on a server, which this static
-      site doesn't have. They'd still be able to log in with an empty library afterward.
+      This deletes this user's saved library and stats from the database. It does <b>not</b> delete their login account; do that in Supabase under Authentication > Users.
     </div>
     <button class="tb-btn danger" style="width:100%;" onclick="deleteUserData('${u.uid}')">🗑️ Delete this user's app data</button>
   `;
@@ -380,60 +319,20 @@ async function openUserModal(uid){
   loadUserSongs(uid);
 }
 async function loadUserSongs(uid){
-  // Liked songs — each doc in users/{uid}/liked already stores the full track (title, artist).
-  try{
-    const likedSnap = await db.collection('users').doc(uid).collection('liked').get();
-    const likedEl = document.getElementById('modal-liked');
-    if(modalUid!==uid || !likedEl) return;
-    if(likedSnap.empty){ likedEl.innerHTML = '<div style="font-size:12px;color:var(--text3);">No liked songs.</div>'; }
-    else{
-      likedEl.innerHTML = likedSnap.docs.map(d=>{
-        const t = d.data();
-        return `<div class="song-row"><span class="song-title">${escHtml(t.title||'Untitled')}</span><span class="song-artist"> — ${escHtml(t.artist||'')}</span></div>`;
-      }).join('');
-    }
-  }catch(e){
-    const likedEl = document.getElementById('modal-liked');
-    if(likedEl) likedEl.innerHTML = `<div style="font-size:12px;color:var(--ct);">Couldn't load: ${escHtml(e.message)}</div>`;
-  }
-
-  // Playlists — each doc stores tracksMap inline, so no extra subcollection queries needed.
-  try{
-    const plSnap = await db.collection('users').doc(uid).collection('playlists').get();
-    const plEl = document.getElementById('modal-playlists');
-    if(modalUid!==uid || !plEl) return;
-    if(plSnap.empty){ plEl.innerHTML = '<div style="font-size:12px;color:var(--text3);">No playlists.</div>'; return; }
-    plEl.innerHTML = plSnap.docs.map(d=>{
-      const p = d.data();
-      const tracks = Object.values(p.tracksMap||{});
-      const songsHtml = tracks.length
-        ? tracks.map(t=>`<div class="song-row"><span class="song-title">${escHtml(t.title||'Untitled')}</span><span class="song-artist"> — ${escHtml(t.artist||'')}</span></div>`).join('')
-        : '<div style="font-size:12px;color:var(--text3);padding:6px 0;">Empty playlist.</div>';
-      return `<details class="playlist-details">
-        <summary>${escHtml(p.name||'Untitled playlist')} <span style="color:var(--text3);">(${tracks.length})</span></summary>
-        <div class="song-list">${songsHtml}</div>
-      </details>`;
-    }).join('');
-  }catch(e){
-    const plEl = document.getElementById('modal-playlists');
-    if(plEl) plEl.innerHTML = `<div style="font-size:12px;color:var(--ct);">Couldn't load: ${escHtml(e.message)}</div>`;
-  }
+  const r = await sb(`/rest/v1/user_data?select=liked,playlists&user_id=eq.${uid}`), likedEl = $('modal-liked'), plEl = $('modal-playlists');
+  if (modalUid !== uid || !likedEl) return;
+  if (!r.ok) { likedEl.innerHTML = plEl.innerHTML = '<div style="font-size:12px;color:var(--ct);">Couldn\'t load.</div>'; return; }
+  const row = (await r.json())[0] || {}, liked = Object.values(row.liked || {}), pls = row.playlists || [];
+  const line = t => `<div class="song-row"><span class="song-title">${escHtml(t.title || 'Untitled')}</span><span class="song-artist"> — ${escHtml(t.artist || '')}</span></div>`;
+  likedEl.innerHTML = liked.length ? liked.map(line).join('') : '<div style="font-size:12px;color:var(--text3);">No liked songs.</div>';
+  plEl.innerHTML = pls.length ? pls.map(p => { const tr = Object.values(p.tracksMap || {}); return `<details class="playlist-details"><summary>${escHtml(p.name || 'Untitled playlist')} <span style="color:var(--text3);">(${tr.length})</span></summary><div class="song-list">${tr.map(line).join('') || '<div style="font-size:12px;color:var(--text3);padding:6px 0;">Empty playlist.</div>'}</div></details>`; }).join('') : '<div style="font-size:12px;color:var(--text3);">No playlists.</div>';
 }
 function closeModal(){ document.getElementById('user-modal').classList.remove('open'); modalUid = null; }
 async function deleteUserData(uid){
-  if(!confirm("Permanently delete this user's liked songs, playlists, follows, and profile record? This cannot be undone.")) return;
-  try{
-    const ref = db.collection('users').doc(uid);
-    for(const sub of ['liked','playlists','follows']){
-      const docs = await ref.collection(sub).get();
-      await Promise.all(docs.docs.map(d=>d.ref.delete()));
-    }
-    await ref.delete();
-    closeModal();
-    refreshData();
-  }catch(e){
-    alert('Failed to delete: ' + e.message);
-  }
+  if(!confirm("Permanently delete this user's saved library and stats? This cannot be undone.")) return;
+  const r = await sb('/rest/v1/user_data?user_id=eq.' + uid, { method: 'DELETE' });
+  if (!r.ok) return alert('Failed to delete.');
+  closeModal(); refreshData();
 }
 
 /* ── EXPORT ── */

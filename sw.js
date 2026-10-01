@@ -9,10 +9,12 @@
 //
 // Bump CACHE_VERSION any time you want to force everyone's stale cache to drop
 // immediately (rarely needed with this strategy, but handy as an escape hatch).
-const CACHE_VERSION = 'cadence-v1';
+const CACHE_VERSION = 'cadence-v2';
 const STATIC_ASSETS = [
   'icon-192.png',
   'icon-512.png',
+  'icon-maskable-192.png',
+  'icon-maskable-512.png',
   'apple-touch-icon.png',
   'manifest.json'
 ];

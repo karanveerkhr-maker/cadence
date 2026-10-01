@@ -1,0 +1,112 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cadence Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ac:#5B6CF2;--ac2:#7C5CE6;--t:#161B33;--d:#58607E;--b:rgba(30,41,90,.1)}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--t);background:linear-gradient(160deg,#EAF1FF,#F6F1FF 50%,#FFEFF7) fixed;min-height:100vh}
+.wrap{max-width:760px;margin:0 auto;padding:24px 18px 60px}h1,h2,h3{font-family:Outfit,sans-serif;margin:0}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}header h1{font-size:24px}header small{color:var(--d)}
+.card{background:rgba(255,255,255,.85);border:1px solid var(--b);border-radius:20px;padding:22px;margin-bottom:16px;box-shadow:0 6px 24px rgba(40,50,110,.06)}
+label{display:block;font-weight:600;font-size:13px;margin:14px 0 5px}input,select{width:100%;padding:11px 13px;border:1px solid var(--b);border-radius:12px;font:inherit;background:#fff}
+input[type=checkbox]{width:auto;margin-right:8px}.chk{display:flex;align-items:flex-start;font-size:13.5px;font-weight:500;margin-top:18px}
+button{font:inherit;font-weight:600;border:0;border-radius:999px;padding:11px 20px;cursor:pointer;background:linear-gradient(120deg,#5B8DF7,#8B6CF0);color:#fff;transition:transform .2s}button:hover{transform:translateY(-1px)}
+button.g{background:#fff;color:var(--t);border:1px solid var(--b)}button.r{background:#fff;color:#C62F4F;border:1px solid #F3C6D0}button:disabled{opacity:.5;cursor:wait}
+.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}.tabs button{background:#fff;color:var(--d);border:1px solid var(--b)}.tabs button.on{background:linear-gradient(120deg,#5B8DF7,#8B6CF0);color:#fff;border:0}
+.song{display:flex;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--b);flex-wrap:wrap}.song:first-child{border:0}
+.song img,.song .ph{width:56px;height:56px;border-radius:12px;object-fit:cover;background:#E4E8FA}.song .m{flex:1;min-width:160px}.song b{display:block}.song small{color:var(--d)}
+.song audio{width:100%;height:36px}.tag{font-size:12px;padding:3px 10px;border-radius:999px;background:#EEF1FB;font-weight:600}.tag.approved{background:#DDF5E8;color:#17794B}.tag.pending{background:#FFF0CF;color:#8A6410}.tag.rejected,.tag.removed{background:#FDE0E6;color:#B0213F}
+.msg{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#161B33;color:#fff;padding:11px 18px;border-radius:14px;max-width:90vw;z-index:9}
+.terms{font-size:13px;color:var(--d)}.terms li{margin:3px 0}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.row{grid-template-columns:1fr}}
+</style></head><body><div class="wrap">
+<header><div><h1>Cadence Studio</h1><small>Upload your music. Reviewed songs appear in Cadence.</small></div><div id="who"></div></header>
+<div id="app"></div></div><div class="msg" id="msg" style="display:none"></div>
+<script>
+const SB_URL = "", SB_KEY = "", CONTACT_EMAIL = ""; // paste your Supabase Project URL + anon key, and the email for copyright complaints
+const $ = id => document.getElementById(id), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S = JSON.parse(localStorage.getItem('cs') || 'null'), isAdmin = false, tab = 'upload';
+const msg = t => { const m = $('msg'); m.textContent = t; m.style.display = ''; clearTimeout(msg.t); msg.t = setTimeout(() => m.style.display = 'none', 4500); };
+const H = (tok, x) => ({ apikey: SB_KEY, Authorization: 'Bearer ' + (tok || SB_KEY), ...x });
+const save = d => { S = { access_token: d.access_token, refresh_token: d.refresh_token, uid: d.user.id, email: d.user.email }; localStorage.setItem('cs', JSON.stringify(S)); };
+async function refresh(){
+  if (!S) return false;
+  const r = await fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: H(0, { 'Content-Type': 'application/json' }), body: JSON.stringify({ refresh_token: S.refresh_token }) });
+  if (!r.ok) { S = null; localStorage.removeItem('cs'); return false; }
+  save(await r.json()); return true;
+}
+async function sb(path, o = {}, retry = true){
+  const r = await fetch(SB_URL + path, { ...o, headers: H(S && S.access_token, o.headers) });
+  if (r.status === 401 && retry && await refresh()) return sb(path, o, false);
+  return r;
+}
+async function auth(kind){
+  const body = JSON.stringify({ email: $('em').value.trim(), password: $('pw').value });
+  const r = await fetch(SB_URL + (kind === 'up' ? '/auth/v1/signup' : '/auth/v1/token?grant_type=password'), { method: 'POST', headers: H(0, { 'Content-Type': 'application/json' }), body });
+  const d = await r.json();
+  if (!r.ok) return msg(d.msg || d.error_description || d.message || 'Something went wrong');
+  if (d.access_token) { save(d); boot(); } else msg('Check your email to confirm your account, then sign in.');
+}
+function out(){ S = null; isAdmin = false; localStorage.removeItem('cs'); boot(); }
+async function boot(){
+  if (!SB_URL || !SB_KEY) { $('app').innerHTML = '<div class="card">Open <b>studio.html</b> and paste your Supabase URL and anon key at the top of the script.</div>'; return; }
+  isAdmin = false;
+  if (S) { const r = await sb('/rest/v1/admins?select=user_id'); if (r.ok) isAdmin = (await r.json()).length > 0; else if (!S) return boot(); }
+  $('who').innerHTML = S ? `<small>${esc(S.email)}</small> <button class="g" onclick="out()">Sign out</button>` : '';
+  show();
+}
+function show(){
+  if (!S) { $('app').innerHTML = `<div class="card"><h2>Artist sign in</h2><label>Email</label><input id="em" type="email" autocomplete="email"><label>Password (6+ characters)</label><input id="pw" type="password" autocomplete="current-password">
+    <p style="display:flex;gap:10px;margin-top:20px"><button onclick="auth('in')">Sign in</button><button class="g" onclick="auth('up')">Create account</button></p></div>`; return; }
+  $('app').innerHTML = `<div class="tabs"><button class="${tab==='upload'?'on':''}" onclick="go('upload')">Upload a song</button><button class="${tab==='mine'?'on':''}" onclick="go('mine')">My songs</button>${isAdmin?`<button class="${tab==='review'?'on':''}" onclick="go('review')">Review</button>`:''}</div><div id="pane"></div>`;
+  ({ upload: upView, mine: mineView, review: reviewView })[tab]();
+}
+const go = t => { tab = t; show(); };
+function upView(){
+  $('pane').innerHTML = `<div class="card"><h2>Upload a song</h2>
+  <label>Song title</label><input id="ti" maxlength="120"><div class="row"><div><label>Artist name</label><input id="ar" maxlength="120"></div><div><label>Language</label><select id="la"><option>Punjabi</option><option>Hindi</option><option>Other</option></select></div></div>
+  <label>Genre (optional)</label><input id="ge" maxlength="40" placeholder="Pop, Folk, Hip-Hop...">
+  <div class="row"><div><label>Song file (mp3, m4a, wav, max 15 MB)</label><input id="fa" type="file" accept="audio/*"></div><div><label>Cover image (max 2 MB)</label><input id="fi" type="file" accept="image/*"></div></div>
+  <label class="chk"><input id="ok" type="checkbox"><span>I own this song, or everyone who made it (singer, writer, producer, sample owners) has given me permission. I allow Cadence to stream it and show its cover. Cadence may remove it at any time, and I can ask for it to be removed.</span></label>
+  <p><button id="go" onclick="upload()">Submit for review</button></p></div>
+  <div class="card terms"><b>Before you upload</b><ul><li>Only upload music you have the rights to. Songs from films, labels or other artists will be rejected and removed.</li><li>Every song is reviewed before it appears in the app.</li><li>Copyright complaints: ${CONTACT_EMAIL ? `<a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a>` : 'add your contact email in the CONTACT_EMAIL setting'}. Reported songs are hidden while we check.</li></ul></div>`;
+}
+const dur = f => new Promise(res => { const a = new Audio(URL.createObjectURL(f)); a.onloadedmetadata = () => res(Math.round(a.duration) || 0); a.onerror = () => res(0); });
+async function put(f){
+  const path = `${S.uid}/${Date.now()}-${f.name.replace(/[^\w.\-]/g, '_')}`;
+  const r = await sb('/storage/v1/object/songs/' + path, { method: 'POST', headers: { 'Content-Type': f.type, 'x-upsert': 'false' }, body: f });
+  if (!r.ok) throw new Error((await r.json()).message || 'File upload failed');
+  return `${SB_URL}/storage/v1/object/public/songs/${path}`;
+}
+async function upload(){
+  const f = $('fa').files[0], c = $('fi').files[0], v = id => $(id).value.trim();
+  if (!v('ti') || !v('ar')) return msg('Add the song title and artist name.');
+  if (!f) return msg('Choose the song file.');
+  if (f.size > 15728640) return msg('The song file is over 15 MB.');
+  if (c && c.size > 2097152) return msg('The cover image is over 2 MB.');
+  if (!$('ok').checked) return msg('Please confirm you own the rights.');
+  $('go').disabled = true; $('go').textContent = 'Uploading...';
+  try {
+    const audio_url = await put(f), art_url = c ? await put(c) : null, duration = await dur(f);
+    const r = await sb('/rest/v1/songs', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ title: v('ti'), artist: v('ar'), language: $('la').value, genre: v('ge') || null, audio_url, art_url, duration, rights_ok: true }) });
+    if (!r.ok) throw new Error((await r.json()).message || 'Could not save the song');
+    msg('Submitted. It will appear in Cadence after review.'); go('mine');
+  } catch (e) { msg(e.message); $('go').disabled = false; $('go').textContent = 'Submit for review'; }
+}
+const songRow = (s, btns, player) => `<div class="song">${s.art_url ? `<img src="${esc(s.art_url)}" alt="">` : '<div class="ph"></div>'}<div class="m"><b>${esc(s.title)}</b><small>${esc(s.artist)} · ${esc(s.language)}</small></div><span class="tag ${s.status}">${s.status}</span>${btns}${player ? `<audio controls preload="none" src="${esc(s.audio_url)}"></audio>` : ''}</div>`;
+async function mineView(){
+  $('pane').innerHTML = '<div class="card">Loading...</div>';
+  const r = await sb(`/rest/v1/songs?select=*&owner=eq.${S.uid}&order=created_at.desc`), rows = r.ok ? await r.json() : [];
+  $('pane').innerHTML = `<div class="card"><h2 style="margin-bottom:8px">My songs</h2>${rows.length ? rows.map(s => songRow(s, `<button class="r" onclick="del('${s.id}')">Delete</button>`)).join('') : '<p>No songs yet.</p>'}</div>`;
+}
+async function del(id){ if (!confirm('Delete this song?')) return; await sb('/rest/v1/songs?id=eq.' + id, { method: 'DELETE' }); mineView(); }
+async function setStatus(id, status){ await sb('/rest/v1/songs?id=eq.' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }); reviewView(); }
+async function dismiss(id){ await sb('/rest/v1/reports?id=eq.' + id, { method: 'DELETE' }); reviewView(); }
+async function reviewView(){
+  $('pane').innerHTML = '<div class="card">Loading...</div>';
+  const j = async p => { const r = await sb(p); return r.ok ? r.json() : []; };
+  const [pend, live, reps] = await Promise.all([j('/rest/v1/songs?select=*&status=eq.pending&order=created_at'), j('/rest/v1/songs?select=*&status=eq.approved&order=created_at.desc&limit=50'), j('/rest/v1/reports?select=id,reason,created_at,songs(id,title,artist,status)&order=created_at.desc')]);
+  $('pane').innerHTML = `<div class="card"><h2>Waiting for review (${pend.length})</h2>${pend.map(s => songRow(s, `<button onclick="setStatus('${s.id}','approved')">Approve</button><button class="r" onclick="setStatus('${s.id}','rejected')">Reject</button>`, 1)).join('') || '<p>Nothing to review.</p>'}</div>
+  <div class="card"><h2>Reports (${reps.length})</h2>${reps.map(x => x.songs ? `<div class="song"><div class="m"><b>${esc(x.songs.title)}</b><small>${esc(x.songs.artist)} · ${esc(x.reason || 'No reason given')}</small></div><span class="tag ${x.songs.status}">${x.songs.status}</span><button class="r" onclick="setStatus('${x.songs.id}','removed')">Remove song</button><button class="g" onclick="dismiss('${x.id}')">Dismiss</button></div>` : '').join('') || '<p>No reports.</p>'}</div>
+  <div class="card"><h2>Live in Cadence</h2>${live.map(s => songRow(s, `<button class="r" onclick="setStatus('${s.id}','removed')">Remove</button>`)).join('') || '<p>No approved songs yet.</p>'}</div>`;
+}
+boot();
+</script></body></html>
