@@ -626,11 +626,62 @@ html[data-theme="light"] .search-box,html[data-theme="light"] .icon-btn,html[dat
 html[data-theme="dark"] .sidebar{background:rgba(8,10,28,.5)}
 html[data-theme="dark"] .player-bar{background:rgba(8,10,28,.6)}
 @media(prefers-reduced-motion:reduce){#glow .bl{animation:none}}
+
+/* ===== Full player: Tune pane fixes + motion ===== */
+.fp-scroll>*{flex-shrink:0}
+.fp-scroll .chips{flex-wrap:wrap;overflow:visible;margin-bottom:12px}
+.eq-row{margin-bottom:14px}
+.eq-row label span{font-variant-numeric:tabular-nums;color:var(--accent-2);display:inline-block}
+.eq-row label span.bump{animation:bump 320ms var(--ease)}
+@keyframes bump{40%{transform:scale(1.25)}}
+/* custom sliders: filled from the centre, glowing thumb */
+.eq-row input[type=range]{-webkit-appearance:none;appearance:none;height:24px;background:transparent;cursor:pointer;--a:50%;--b:50%}
+.eq-row input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:6px;background:linear-gradient(90deg,rgba(128,140,190,.25) var(--a),var(--accent) var(--a),var(--accent-2) var(--b),rgba(128,140,190,.25) var(--b))}
+.eq-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 2px 10px var(--glow);transition:transform 200ms var(--ease),box-shadow 200ms}
+.eq-row input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.12)}
+.eq-row input[type=range]:active::-webkit-slider-thumb{transform:scale(1.3);box-shadow:0 0 0 8px var(--glow)}
+.eq-row input[type=range]::-moz-range-track{height:6px;border-radius:6px;background:rgba(128,140,190,.25)}
+.eq-row input[type=range]::-moz-range-progress{height:6px;border-radius:6px;background:var(--accent)}
+.eq-row input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--accent)}
+/* staggered reveal each time a pane opens */
+#pane-tune.active>*,#pane-queue.active>.h2{animation:tuneIn 520ms var(--ease) both}
+#pane-tune.active>:nth-child(1){animation-delay:0ms}#pane-tune.active>:nth-child(2){animation-delay:70ms}#pane-tune.active>:nth-child(3){animation-delay:140ms}
+#pane-tune.active>:nth-child(4){animation-delay:210ms}#pane-tune.active>:nth-child(5){animation-delay:280ms}#pane-tune.active>:nth-child(6){animation-delay:360ms}
+#pane-tune.active>:nth-child(7){animation-delay:430ms}#pane-tune.active>:nth-child(8){animation-delay:500ms}
+@keyframes tuneIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+#pane-tune .chip{transition:background 220ms,color 220ms,transform 220ms var(--ease),box-shadow 220ms}
+#pane-tune .chip:active{transform:scale(.92)}
+#pane-tune .chip.active{animation:chipPop 420ms var(--ease)}
+@keyframes chipPop{0%{transform:scale(.88)}55%{transform:scale(1.08)}100%{transform:scale(1)}}
+.sleep-note:not(:empty){display:flex;align-items:center;gap:9px;color:var(--accent-2);animation:tuneIn 420ms var(--ease) both}
+.sleep-note:not(:empty)::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent-2);animation:breathe 2.2s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.7);opacity:.45}}
+/* sliding tab pill */
+.tabs{position:relative}
+.tab{position:relative;z-index:1}
+.tab.active{background:transparent;box-shadow:none;color:var(--text)}
+.tab-ind{position:absolute;top:3px;bottom:3px;left:0;border-radius:999px;background:var(--surface-hover);box-shadow:0 2px 8px rgba(0,0,0,.18);transition:transform 380ms var(--ease),width 380ms var(--ease);z-index:0}
+/* player opens with a gentle cascade; glow and play button breathe */
+.fp.open .fp-top{animation:tuneIn 480ms var(--ease) 80ms both}
+.fp.open .fp-meta{animation:tuneIn 560ms var(--ease) 180ms both}
+.fp.open .fp-inner>div:nth-of-type(4){animation:tuneIn 560ms var(--ease) 240ms both}
+.fp.open .fp-controls{animation:tuneIn 560ms var(--ease) 300ms both}
+.fp-glow{animation:fpGlow 12s ease-in-out infinite alternate}
+@keyframes fpGlow{to{transform:scale(1.12) translateY(-2%);opacity:.82}}
+.fp.playing .fp-play{animation:ringPulse 2.6s ease-out infinite}
+@keyframes ringPulse{0%{box-shadow:0 10px 30px var(--glow),0 0 0 0 rgba(var(--dyn),.45)}70%,100%{box-shadow:0 10px 30px var(--glow),0 0 0 18px rgba(var(--dyn),0)}}
+.fp-controls .ctrl{transition:transform 200ms var(--ease),color 160ms}
+.fp-controls .ctrl:hover{transform:scale(1.12)}
+
+.xf-note,.sleep-note.xf-note:not(:empty){color:var(--text-faint);margin-top:8px}
+.sleep-note.xf-note:not(:empty)::before{display:none}
+#pane-tune.active>:nth-child(9){animation-delay:570ms}#pane-tune.active>:nth-child(10){animation-delay:640ms}#pane-tune.active>:nth-child(11){animation-delay:710ms}
 </style>
 </head>
 <body>
 <!-- Icon sprite -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4m0 0h11l-2 4 2 4H5"/></symbol>
   <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 20a2 2 0 0 0 3.4 0"/></symbol>
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-4.5v-6h-7v6H4a1 1 0 0 1-1-1z"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
@@ -712,6 +763,8 @@ html[data-theme="dark"] .player-bar{background:rgba(8,10,28,.6)}
           <div class="section-head"><h2 class="h2" id="forYouTitle">Made for you</h2></div>
           <div class="rail" id="railForYou"></div>
         </div>
+        <div class="section" id="pjSection" style="display:none"><div class="section-head"><h2 class="h2">New Punjabi</h2><span class="flux">Community</span></div><div class="rail" id="railPunjabi"></div></div>
+        <div class="section" id="hiSection" style="display:none"><div class="section-head"><h2 class="h2">New Hindi</h2><span class="flux">Community</span></div><div class="rail" id="railHindi"></div></div>
         <div class="section" id="customSection" style="display:none">
           <div class="section-head"><h2 class="h2">Your tracks</h2></div>
           <div class="rail" id="railCustom"></div>
@@ -780,6 +833,7 @@ html[data-theme="dark"] .player-bar{background:rgba(8,10,28,.6)}
         <div class="p-title" id="pTitle">Nothing playing</div>
         <div class="p-artist" id="pArtist">Pick a song to start</div>
       </div>
+      <button class="ctrl" id="reportBtn" style="display:none" onclick="reportCurrent()" aria-label="Report this song" title="Report this song"><svg class="ic"><use href="#i-flag"/></svg></button>
       <button class="ctrl like" data-role="like" onclick="likeCurrent()" aria-label="Like"><svg class="ic"><use href="#i-heart"/></svg></button>
     </div>
     <div class="p-center">
@@ -830,7 +884,7 @@ html[data-theme="dark"] .player-bar{background:rgba(8,10,28,.6)}
   <div class="fp-inner">
     <div class="fp-top">
       <button class="ctrl" onclick="closeFp()" aria-label="Close"><svg class="ic lg"><use href="#i-down"/></svg></button>
-      <div class="tabs">
+      <div class="tabs"><i class="tab-ind"></i>
         <button class="tab active" data-pane="now" onclick="setFpPane('now')">Now Playing</button>
         <button class="tab" data-pane="queue" onclick="setFpPane('queue')">Queue</button>
         <button class="tab" data-pane="tune" onclick="setFpPane('tune')">Tune</button>
@@ -856,6 +910,9 @@ html[data-theme="dark"] .player-bar{background:rgba(8,10,28,.6)}
         <div class="eq-row"><label>Bass <span id="eqBassV">0 dB</span></label><input type="range" min="-10" max="10" step="1" value="0" data-band="bass" oninput="setEQ('bass',this.value)"></div>
         <div class="eq-row"><label>Mid <span id="eqMidV">0 dB</span></label><input type="range" min="-10" max="10" step="1" value="0" data-band="mid" oninput="setEQ('mid',this.value)"></div>
         <div class="eq-row"><label>Treble <span id="eqTrebleV">0 dB</span></label><input type="range" min="-10" max="10" step="1" value="0" data-band="treble" oninput="setEQ('treble',this.value)"></div>
+        <div class="h2" style="margin-top:26px">Crossfade</div>
+        <div class="chips" id="xfadeChips" style="margin-top:12px"></div>
+        <div class="sleep-note xf-note" id="xfadeNote"></div>
         <div class="h2" style="margin-top:26px">Sleep timer</div>
         <div class="chips" id="sleepChips" style="margin-top:12px"></div>
         <div class="sleep-note" id="sleepNote"></div>
@@ -931,6 +988,11 @@ const YOUTUBE_API_KEY = "AIzaSyA6an_GN9LKWfcJCtxhbr8zQuPDnxwbk-o";
 // Example: { id:"custom-1", title:"My Song", artist:"Me", audio:"song.mp3", art:"cover.jpg", duration:180 }
 const CUSTOM_TRACKS = [];
 
+// Community songs uploaded through studio.html (Supabase). Paste the same URL + anon key you used in studio.html.
+const SUPABASE_URL = "";
+const SUPABASE_KEY = "";
+const COMMUNITY = [];
+
 /* ======================================================================
    HELPERS
    ====================================================================== */
@@ -938,7 +1000,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const lsGet = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
-const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} try { cloudQueue(k); } catch (e) {} };
 const ic = (n, c) => `<svg class="ic ${c || ''}"><use href="#i-${n}"/></svg>`;
 const fmt = s => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), r = s % 60;
   return h ? `${h}:${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}` : `${m}:${String(r).padStart(2,'0')}`; };
@@ -1036,6 +1098,88 @@ const skRail = n => Array.from({ length: n || 7 }, () => `<div class="card" styl
 const skRows = n => `<div class="rows">${Array.from({ length: n || 6 }, () => `<div class="row" style="animation:none"><div class="sk" style="width:44px;height:44px"></div><div style="flex:1"><div class="sk" style="height:12px;width:46%;margin-bottom:7px"></div><div class="sk" style="height:10px;width:28%"></div></div></div>`).join('')}</div>`;
 const stateHTML = (title, msg, btn) => `<div class="state"><b>${esc(title)}</b>${esc(msg)}${btn ? `<div><button class="btn sm" onclick="${btn[1]}">${esc(btn[0])}</button></div>` : ''}</div>`;
 
+/* ---------- Accounts + cloud sync (Supabase) ---------- */
+const cloud = { s: lsGet('cadence_session', null), t: null, secs: 0, tick: 0 };
+const cloudOn = () => !!(SUPABASE_URL && SUPABASE_KEY);
+const SYNC_KEYS = ['cadence_liked', 'cadence_playlists', 'cadence_recent', 'cadence_name'];
+const cH = x => ({ apikey: SUPABASE_KEY, Authorization: 'Bearer ' + (cloud.s ? cloud.s.access_token : SUPABASE_KEY), ...x });
+async function cApi(path, o = {}, retry = true){
+  const r = await fetch(SUPABASE_URL + path, { ...o, headers: cH(o.headers) });
+  if (r.status === 401 && retry && cloud.s && await cRefresh()) return cApi(path, o, false);
+  return r;
+}
+function cSave(d){ cloud.s = { access_token: d.access_token, refresh_token: d.refresh_token, uid: d.user.id, email: d.user.email }; lsSet('cadence_session', cloud.s); }
+async function cRefresh(){
+  const r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', { method: 'POST', headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ refresh_token: cloud.s.refresh_token }) });
+  if (!r.ok) { cloud.s = null; lsSet('cadence_session', null); return false; }
+  cSave(await r.json()); return true;
+}
+async function cAuth(kind){
+  const email = $('cEm').value.trim(), password = $('cPw').value;
+  if (!email || !password) return toast('Enter your email and password');
+  try {
+    const r = await fetch(SUPABASE_URL + (kind === 'up' ? '/auth/v1/signup' : '/auth/v1/token?grant_type=password'), { method: 'POST', headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+    const d = await r.json();
+    if (!r.ok) return toast(d.msg || d.error_description || d.message || 'Something went wrong');
+    if (!d.access_token) return toast('Check your email to confirm, then sign in');
+    cSave(d); toast('Signed in'); await cPull();
+  } catch (e) { toast("Couldn't reach the server"); }
+  renderProfileView();
+}
+function cOut(){ cFlush(); cloud.s = null; lsSet('cadence_session', null); toast('Signed out'); renderProfileView(); }
+function cloudQueue(k){ if (!cloud.s || !SYNC_KEYS.includes(k)) return; clearTimeout(cloud.t); cloud.t = setTimeout(cPush, 2500); }
+async function cPush(){
+  if (!cloud.s) return;
+  const body = { user_id: cloud.s.uid, email: cloud.s.email, name: lsGet('cadence_name', 'You'), liked: likes, playlists: pls, recent: recent.slice(0, 30), liked_count: Object.keys(likes).length, playlist_count: pls.length };
+  try { await cApi('/rest/v1/user_data?on_conflict=user_id', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(body) }); } catch (e) {}
+}
+async function cPull(){   // merge what is saved online with this device, then save the result back
+  const r = await cApi(`/rest/v1/user_data?select=liked,playlists,recent,name&user_id=eq.${cloud.s.uid}`); if (!r.ok) return;
+  const [row] = await r.json();
+  if (row) {
+    likes = { ...(row.liked || {}), ...likes }; lsSet('cadence_liked', likes);
+    const have = new Set(pls.map(x => x.id)); pls = pls.concat((row.playlists || []).filter(x => !have.has(x.id))); lsSet('cadence_playlists', pls);
+    const seen = new Set(recent.map(t => String(t.id))); recent = recent.concat((row.recent || []).filter(t => !seen.has(String(t.id)))).slice(0, 30); lsSet('cadence_recent', recent);
+    if (row.name && row.name !== 'You' && lsGet('cadence_name', 'You') === 'You') lsSet('cadence_name', row.name);
+    syncLikes(); renderSidePls(); renderQuick(); paintGreeting();
+  }
+  await cPush();
+}
+function cTick(){ const n = performance.now(); if (cloud.tick && n - cloud.tick < 2500) cloud.secs += (n - cloud.tick) / 1000; cloud.tick = n; }
+async function cFlush(){   // listening time, added to the account about once a minute
+  const n = Math.floor(cloud.secs); if (!cloud.s || n < 1) return; cloud.secs -= n;
+  try { await cApi('/rest/v1/rpc/add_listen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secs: n }), keepalive: true }); } catch (e) { cloud.secs += n; }
+}
+setInterval(cFlush, 60000);
+document.addEventListener('visibilitychange', () => { if (document.hidden) cFlush(); });
+function accountHTML(){
+  if (!cloudOn()) return '';
+  if (cloud.s) return `<div class="settings-group"><div class="settings-group-title">Account</div><div class="setting-row"><div><b>${esc(cloud.s.email)}</b><div class="sub">Your likes, playlists and history sync to this account</div></div><button class="btn ghost sm" onclick="cOut()">Sign out</button></div></div>`;
+  return `<div class="settings-group"><div class="settings-group-title">Account</div><div class="sub" style="margin-bottom:10px">Sign in to keep your likes and playlists on every device.</div>
+    <input class="profile-name-field" id="cEm" type="email" placeholder="Email" autocomplete="email" style="width:100%;margin-bottom:8px">
+    <input class="profile-name-field" id="cPw" type="password" placeholder="Password (6+ characters)" autocomplete="current-password" style="width:100%;margin-bottom:12px" onkeydown="if(event.key==='Enter')cAuth('in')">
+    <div style="display:flex;gap:10px"><button class="btn sm" onclick="cAuth('in')">Sign in</button><button class="btn ghost sm" onclick="cAuth('up')">Create account</button></div></div>`;
+}
+async function loadCommunity(){
+  if (!SUPABASE_URL || !SUPABASE_KEY) return;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/songs?select=id,title,artist,language,art_url,audio_url,duration&status=eq.approved&order=created_at.desc&limit=60`, { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY } });
+    if (!r.ok) return;
+    COMMUNITY.length = 0;
+    (await r.json()).forEach(x => COMMUNITY.push({ id: 'cm-' + x.id, dbId: x.id, title: x.title, artist: x.artist, art: x.art_url || '', audio: x.audio_url, duration: x.duration || 0, lang: x.language }));
+    [['Punjabi', 'pjSection', 'railPunjabi', 'cm-pj'], ['Hindi', 'hiSection', 'railHindi', 'cm-hi']].forEach(([l, sec, rail, key]) => {
+      const list = COMMUNITY.filter(t => t.lang === l); $(sec).style.display = list.length ? '' : 'none'; if (list.length) renderRail(rail, key, list);
+    });
+  } catch (e) {}
+}
+async function reportCurrent(){
+  if (!cur || !cur.dbId) return;
+  const reason = prompt('What is wrong with this song? (for example: copyright, not the artist, offensive)'); if (!reason) return;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/reports`, { method: 'POST', headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ song_id: cur.dbId, reason: reason.slice(0, 500) }) });
+    toast(r.ok ? 'Thanks, we will review it' : "Couldn't send the report");
+  } catch (e) { toast("Couldn't send the report"); }
+}
 function renderRail(id, key, tracks){
   reg(key, tracks);
   $(id).innerHTML = tracks.length ? tracks.map((t, i) => cardHTML(t, key, i)).join('') : stateHTML('Nothing here yet', 'Try again in a moment.');
@@ -1123,6 +1267,7 @@ async function loadHome(){
     $('genreChips').innerHTML = GENRES.map(([tag, name], i) => `<button class="chip ${i ? '' : 'active'}" data-act="genre" data-tag="${tag}">${name}</button>`).join('');
   }
   if (CUSTOM_TRACKS.length) { $('customSection').style.display = ''; renderRail('railCustom', 'custom', CUSTOM_TRACKS); }
+  loadCommunity();
   renderQuick();
   const b = timeBucket(); $('timeTitle').textContent = b.label;
   ['railTrending', 'railTime', 'railFresh', 'railAudius'].forEach(id => $(id).innerHTML = skRail());
@@ -1182,7 +1327,7 @@ async function runSearch(q){
   const token = ++searchToken;
   $('searchArea').innerHTML = skRows(7);
   const needle = q.toLowerCase();
-  const custom = CUSTOM_TRACKS.filter(t => (t.title + ' ' + t.artist).toLowerCase().includes(needle));
+  const custom = CUSTOM_TRACKS.concat(COMMUNITY).filter(t => (t.title + ' ' + t.artist).toLowerCase().includes(needle));
   const [j1, j2, a, y] = await Promise.allSettled([
     jamendo('tracks', { namesearch: q, limit: 20 }),
     jamendo('tracks', { search: q, limit: 20 }),
@@ -1418,7 +1563,7 @@ function renderProfileView(){
 function profileHTML(){
   const name = lsGet('cadence_name', 'You');
   const top = topArtist();
-  return `<div class="profile-head">
+  return `${accountHTML()}<div class="profile-head">
       <div class="avatar-big">${esc(initials(name))}</div>
       <div>
         <input class="profile-name-field" id="profileNameInput" value="${esc(name)}" maxlength="24" placeholder="Your name"
@@ -1464,7 +1609,7 @@ function settingsHTML(){
     </div>
     <div class="settings-group">
       <div class="settings-group-title">About</div>
-      <div class="about-line">Cadence · testing build<br>Songs from Jamendo &amp; Audius, with an optional YouTube fallback.<br>Everything you see here is saved only on this device.</div>
+      <div class="about-line">Cadence · testing build<br>Songs from Jamendo &amp; Audius, with an optional YouTube fallback.<br>Signed-in accounts sync across devices; otherwise everything is saved on this device only.</div>
     </div>`;
 }
 function clearData(kind){
@@ -1537,7 +1682,14 @@ async function genMood(){
 /* ======================================================================
    PLAYER
    ====================================================================== */
-const audio = $('audio');
+const deckA = $('audio'), deckB = new Audio();
+deckB.preload = 'auto';
+let audio = deckA;                       // the deck the UI currently follows
+const otherDeck = () => audio === deckA ? deckB : deckA;
+let userVol = 0.9;
+let xfadeSec = lsGet('cadence_xfade', 3); // 0 = off
+let xf = { on: false, timer: null, out: null, pre: null }; // pre = { idx, el } preloaded next song
+const canFade = (() => { try { const v = deckA.volume; deckA.volume = .5; const ok = deckA.volume === .5; deckA.volume = v; return ok; } catch (e) { return false; } })();
 let cur = null, queue = [], qi = -1, curKey = '', playing = false, shuffle = false, repeat = 0, dragging = false, errStreak = 0;
 
 function playFrom(key, i){
@@ -1554,13 +1706,77 @@ function shuffleFrom(key){
   shuffle = true; syncModes();
   playFrom(key, Math.floor(Math.random() * list.length));
 }
-function load(t){
+function commitTrack(t){
   cur = t; errStreak = 0;
-  audio.src = t.audio;
-  const p = audio.play(); if (p && p.catch) p.catch(() => {});
   recent = [t, ...recent.filter(r => String(r.id) !== String(t.id))].slice(0, 30);
   lsSet('cadence_recent', recent);
   onTrackChange();
+}
+function load(t){
+  killFade(); xf.pre = null;
+  audio.volume = userVol;
+  audio.src = t.audio;
+  const p = audio.play(); if (p && p.catch) p.catch(() => {});
+  commitTrack(t);
+}
+
+/* ---------- Crossfade: the end of a song blends into the start of the next ---------- */
+function nextIndex(auto){
+  if (!queue.length) return -1;
+  if (shuffle && queue.length > 1) { let n; do { n = Math.floor(Math.random() * queue.length); } while (n === qi); return n; }
+  const n = qi + 1;
+  if (n >= queue.length) return (auto && repeat === 0) ? -1 : 0;
+  return n;
+}
+function killFade(){
+  clearInterval(xf.timer); xf.timer = null;
+  if (xf.out) { try { xf.out.pause(); xf.out.removeAttribute('src'); xf.out.load(); } catch (e) {} xf.out.volume = userVol; xf.out = null; }
+  xf.on = false; audio.volume = userVol;
+}
+function preloadNext(){
+  const n = nextIndex(true); if (n < 0 || n === qi) return;
+  const el = otherDeck(), t = queue[n];
+  if (eq.ready) hookEQ(el);
+  el.volume = 0; el.preload = 'auto'; el.src = t.audio; el.load();
+  xf.pre = { idx: n, el };
+}
+function startCrossfade(len){
+  const pre = xf.pre; xf.pre = null;
+  if (!pre || !queue[pre.idx]) return;
+  const out = audio, inn = pre.el, t = queue[pre.idx];
+  const go = inn.play(), was = cur;
+  const begin = () => {
+    if (audio !== out || cur !== was) { inn.pause(); return; }
+    xf.on = true; xf.out = out;
+    audio = inn; qi = pre.idx; commitTrack(t); // UI jumps to the new song as the blend starts
+    const t0 = performance.now(), dur = Math.max(1, len) * 1000;
+    clearInterval(xf.timer);
+    xf.timer = setInterval(() => {
+      const p = Math.min(1, (performance.now() - t0) / dur);
+      out.volume = Math.max(0, Math.min(1, userVol * Math.cos(p * Math.PI / 2)));   // equal-power curves keep loudness steady
+      inn.volume = Math.max(0, Math.min(1, userVol * Math.sin(p * Math.PI / 2)));
+      if (p >= 1) killFade();
+    }, 40);
+  };
+  if (go && go.then) go.then(begin).catch(() => { inn.pause(); inn.removeAttribute('src'); });
+  else begin();
+}
+function checkCrossfade(){
+  if (!xfadeSec || !canFade || xf.on || audio.paused || repeat === 2 || !cur) return;
+  const d = audio.duration; if (!isFinite(d) || d < xfadeSec * 3 + 4) return;
+  const rem = d - audio.currentTime;
+  if (!xf.pre && rem <= xfadeSec + 10 && rem > xfadeSec + 0.5) preloadNext();
+  else if (xf.pre && rem <= xfadeSec + 0.3 && rem > 0.4) startCrossfade(Math.min(xfadeSec, rem));
+}
+function setXfade(sec){
+  xfadeSec = sec; lsSet('cadence_xfade', sec); xf.pre = null;
+  renderTune(); toast(sec ? `Crossfade ${sec}s` : 'Crossfade off');
+}
+function hookEQ(el){
+  if (!eq.ready || el._eq) return;
+  el.crossOrigin = 'anonymous';
+  el.addEventListener('error', () => {}, { once: true });
+  try { eq.ctx.createMediaElementSource(el).connect(eq.bass); el._eq = true; } catch (e) {}
 }
 function togglePlay(){
   if (!cur) { const first = LISTS.trending && LISTS.trending[0]; if (first) { curKey = ''; playFrom('trending', 0); } return; }
@@ -1569,9 +1785,8 @@ function togglePlay(){
 function advance(auto){
   if (!queue.length) return;
   if (repeat === 2 && auto) { audio.currentTime = 0; audio.play(); return; }
-  let n;
-  if (shuffle && queue.length > 1) { do { n = Math.floor(Math.random() * queue.length); } while (n === qi); }
-  else { n = qi + 1; if (n >= queue.length) { if (auto && repeat === 0) { audio.pause(); audio.currentTime = 0; return; } n = 0; } }
+  const n = nextIndex(auto);
+  if (n < 0) { audio.pause(); audio.currentTime = 0; return; }
   qi = n; load(queue[qi]);
 }
 function next(){ advance(false); }
@@ -1590,13 +1805,13 @@ function syncModes(){
   });
 }
 function setVol(v){
-  v = Number(v); audio.volume = v; audio.muted = false;
+  v = Number(v); userVol = v; if (!xf.on) audio.volume = v; deckA.muted = deckB.muted = false;
   $('vol').value = v; $('vol').style.setProperty('--v', (v * 100) + '%');
   $('volIc').querySelector('use').setAttribute('href', v === 0 ? '#i-mute' : '#i-volume');
   lsSet('cadence_vol', v);
 }
 function toggleMute(){
-  audio.muted = !audio.muted;
+  const m = !audio.muted; deckA.muted = deckB.muted = m;
   $('volIc').querySelector('use').setAttribute('href', audio.muted || audio.volume === 0 ? '#i-mute' : '#i-volume');
 }
 
@@ -1619,6 +1834,7 @@ function onTrackChange(){
   ['pArtist', 'mArtist', 'fpArtist'].forEach(id => $(id).textContent = t.artist);
   document.title = `${t.title} · Cadence`;
   setBgArt(t.art);
+  $('reportBtn').style.display = t.dbId ? '' : 'none';
   document.body.classList.add('has-track');
   $('mini').classList.add('show');
   markNow(); syncLikes();
@@ -1638,17 +1854,21 @@ function updateProgress(){
   document.querySelectorAll('[data-role="dur"]').forEach(el => el.textContent = fmt(d));
   $('mFill').style.width = pct + '%';
 }
-audio.addEventListener('timeupdate', updateProgress);
-audio.addEventListener('loadedmetadata', updateProgress);
-audio.addEventListener('play', () => setPlaying(true));
-audio.addEventListener('pause', () => setPlaying(false));
-audio.addEventListener('ended', () => advance(true));
-audio.addEventListener('error', () => {
-  if (!audio.src || !cur) return;
-  errStreak++;
-  toast("Couldn't play this song");
-  if (errStreak < 3 && queue.length > 1) setTimeout(() => { if (audio.error) advance(true); }, 900);
-});
+function bindDeck(el){
+  const act = fn => (...a) => { if (el === audio) fn(...a); };
+  el.addEventListener('timeupdate', act(() => { updateProgress(); checkCrossfade(); cTick(); }));
+  el.addEventListener('loadedmetadata', act(updateProgress));
+  el.addEventListener('play', act(() => setPlaying(true)));
+  el.addEventListener('pause', act(() => { if (xf.on) killFade(); setPlaying(false); }));
+  el.addEventListener('ended', act(() => advance(true)));
+  el.addEventListener('error', act(() => {
+    if (!el.getAttribute('src') || !cur) return;
+    errStreak++;
+    toast("Couldn't play this song");
+    if (errStreak < 3 && queue.length > 1) setTimeout(() => { if (el.error) advance(true); }, 900);
+  }));
+}
+bindDeck(deckA); bindDeck(deckB);
 
 function bindScrub(el){
   const seek = e => {
@@ -1664,13 +1884,19 @@ function bindScrub(el){
 }
 
 /* Full player */
-function openFp(pane){ if (!cur) return; $('fp').classList.add('open'); setFpPane(pane || 'now'); }
+function openFp(pane){ if (!cur) return; $('fp').classList.add('open'); setFpPane(pane || 'now'); setTimeout(moveTabInd, 60); }
 function closeFp(){ $('fp').classList.remove('open'); }
 function setFpPane(p){
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.pane === p));
   document.querySelectorAll('.fp-pane').forEach(el => el.classList.toggle('active', el.id === 'pane-' + p));
   if (p === 'queue') renderQueue();
+  moveTabInd();
 }
+function moveTabInd(){
+  const t = document.querySelector('.tab.active'), i = document.querySelector('.tab-ind'); if (!t || !i) return;
+  i.style.width = t.offsetWidth + 'px'; i.style.transform = 'translateX(' + t.offsetLeft + 'px)';
+}
+window.addEventListener('resize', moveTabInd);
 function renderQueue(){
   const el = $('queueRows');
   if (!queue.length) { el.innerHTML = stateHTML('Queue is empty', 'Play something to fill it.'); return; }
@@ -1685,12 +1911,15 @@ function renderQueue(){
 let eqVals = lsGet('cadence_eq', { bass: 0, mid: 0, treble: 0 });
 const eq = { ready: false, ctx: null, bass: null, mid: null, treble: null, analyser: null, busy: false };
 const EQ_PRESETS = { Flat: [0, 0, 0], 'Bass boost': [7, 0, 1], Vocal: [-2, 4, 2], Bright: [-1, 1, 7], Night: [3, -1, -3] };
+function eqFill(inp){ const p = (Number(inp.value) + 10) / 20 * 100; inp.style.setProperty('--a', Math.min(50, p) + '%'); inp.style.setProperty('--b', Math.max(50, p) + '%'); }
 function renderTune(){
   $('eqPresets').innerHTML = Object.keys(EQ_PRESETS).map(n => `<button class="chip" data-act="eqpreset" data-name="${n}">${n}</button>`).join('');
   ['bass', 'mid', 'treble'].forEach(b => {
-    const inp = document.querySelector(`input[data-band="${b}"]`); inp.value = eqVals[b];
+    const inp = document.querySelector(`input[data-band="${b}"]`); inp.value = eqVals[b]; eqFill(inp);
     $('eq' + cap(b) + 'V').textContent = (eqVals[b] > 0 ? '+' : '') + eqVals[b] + ' dB';
   });
+  $('xfadeChips').innerHTML = [0, 2, 3, 5, 8].map(n => `<button class="chip ${n === xfadeSec ? 'active' : ''}" data-act="xfade" data-sec="${n}">${n ? n + 's' : 'Off'}</button>`).join('');
+  $('xfadeNote').textContent = !canFade ? "This device doesn't allow fading between songs." : xfadeSec ? 'The end of each song blends into the start of the next.' : 'Songs play one after another with no overlap.';
   $('sleepChips').innerHTML = [0, 15, 30, 45, 60].map(m => `<button class="chip ${m === sleepMin ? 'active' : ''}" data-act="sleep" data-min="${m}">${m ? m + ' min' : 'Off'}</button>`).join('');
 }
 async function ensureEQ(){
@@ -1703,13 +1932,14 @@ async function ensureEQ(){
     audio.crossOrigin = 'anonymous'; audio.src = cur.audio;
     audio.addEventListener('loadedmetadata', () => { audio.currentTime = t; if (was) audio.play().catch(() => {}); }, { once: true });
     eq.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const src = eq.ctx.createMediaElementSource(audio);
+    const src = eq.ctx.createMediaElementSource(audio); audio._eq = true;
     eq.bass = eq.ctx.createBiquadFilter(); eq.bass.type = 'lowshelf'; eq.bass.frequency.value = 200;
     eq.mid = eq.ctx.createBiquadFilter(); eq.mid.type = 'peaking'; eq.mid.frequency.value = 1000;
     eq.treble = eq.ctx.createBiquadFilter(); eq.treble.type = 'highshelf'; eq.treble.frequency.value = 3000;
     eq.analyser = eq.ctx.createAnalyser(); eq.analyser.fftSize = 128;
     src.connect(eq.bass).connect(eq.mid).connect(eq.treble).connect(eq.analyser).connect(eq.ctx.destination);
     eq.ready = true;
+    { const o = otherDeck(); if (!xf.on) { o.pause(); o.removeAttribute('src'); o.load(); xf.pre = null; } hookEQ(o); }
   } catch (e) { toast("Equalizer isn't available for this source"); }
   eq.busy = false;
   return eq.ready;
@@ -1717,6 +1947,8 @@ async function ensureEQ(){
 function applyEQ(){ if (!eq.ready) return; eq.bass.gain.value = eqVals.bass; eq.mid.gain.value = eqVals.mid; eq.treble.gain.value = eqVals.treble; if (eq.ctx.state === 'suspended') eq.ctx.resume(); }
 async function setEQ(band, val){
   eqVals[band] = Number(val); lsSet('cadence_eq', eqVals);
+  const inp = document.querySelector(`input[data-band="${band}"]`); if (inp) eqFill(inp);
+  const vs = $('eq' + cap(band) + 'V'); vs.classList.remove('bump'); void vs.offsetWidth; vs.classList.add('bump');
   $('eq' + cap(band) + 'V').textContent = (val > 0 ? '+' : '') + val + ' dB';
   if (await ensureEQ()) applyEQ();
 }
@@ -1850,6 +2082,7 @@ document.addEventListener('click', e => {
     case 'idea': $('moodInput').value = d.idea; genMood(); break;
     case 'mlang': moodLang = d.lang; document.querySelectorAll('#moodLang .chip').forEach(c => c.classList.toggle('active', c === el)); break;
     case 'eqpreset': setEQPreset(d.name); break;
+    case 'xfade': setXfade(+d.sec); break;
     case 'sleep': setSleep(+d.min); break;
     case 'theme': applyTheme(d.theme); lsSet('cadence_theme', d.theme); break;
     case 'clear': clearData(d.clear); break;
@@ -1896,6 +2129,7 @@ if ('mediaSession' in navigator) {
     audio.preload = 'none'; audio.src = cur.audio; onTrackChange(); setPlaying(false);
   }
   loadHome();
+  if (cloudOn() && cloud.s) cPull();
   if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
 </script>
