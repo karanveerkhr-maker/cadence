@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cadence Studio</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="legal-config.js"></script>
 <style>
 :root{--ac:#5B6CF2;--ac2:#7C5CE6;--t:#161B33;--d:#58607E;--b:rgba(30,41,90,.1)}
 *{box-sizing:border-box}body{margin:0;font:15px/1.5 'Plus Jakarta Sans',system-ui,sans-serif;color:var(--t);background:linear-gradient(160deg,#EAF1FF,#F6F1FF 50%,#FFEFF7) fixed;min-height:100vh}
@@ -8,19 +8,19 @@ header{display:flex;align-items:center;justify-content:space-between;margin-bott
 .card{background:rgba(255,255,255,.85);border:1px solid var(--b);border-radius:20px;padding:22px;margin-bottom:16px;box-shadow:0 6px 24px rgba(40,50,110,.06)}
 label{display:block;font-weight:600;font-size:13px;margin:14px 0 5px}input,select{width:100%;padding:11px 13px;border:1px solid var(--b);border-radius:12px;font:inherit;background:#fff}
 input[type=checkbox]{width:auto;margin-right:8px}.chk{display:flex;align-items:flex-start;font-size:13.5px;font-weight:500;margin-top:18px}
-button{font:inherit;font-weight:600;border:0;border-radius:999px;padding:11px 20px;cursor:pointer;background:linear-gradient(120deg,#5B8DF7,#8B6CF0);color:#fff;transition:transform .2s}button:hover{transform:translateY(-1px)}
+button{font:inherit;font-weight:600;border:0;border-radius:999px;padding:11px 20px;cursor:pointer;background:linear-gradient(120deg,#4F5FE0,#7A55E0);color:#fff;transition:transform .2s}button:hover{transform:translateY(-1px)}
 button.g{background:#fff;color:var(--t);border:1px solid var(--b)}button.r{background:#fff;color:#C62F4F;border:1px solid #F3C6D0}button:disabled{opacity:.5;cursor:wait}
-.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}.tabs button{background:#fff;color:var(--d);border:1px solid var(--b)}.tabs button.on{background:linear-gradient(120deg,#5B8DF7,#8B6CF0);color:#fff;border:0}
+.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}.tabs button{background:#fff;color:var(--d);border:1px solid var(--b)}.tabs button.on{background:linear-gradient(120deg,#4F5FE0,#7A55E0);color:#fff;border:0}
 .song{display:flex;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--b);flex-wrap:wrap}.song:first-child{border:0}
 .song img,.song .ph{width:56px;height:56px;border-radius:12px;object-fit:cover;background:#E4E8FA}.song .m{flex:1;min-width:160px}.song b{display:block}.song small{color:var(--d)}
 .song audio{width:100%;height:36px}.tag{font-size:12px;padding:3px 10px;border-radius:999px;background:#EEF1FB;font-weight:600}.tag.approved{background:#DDF5E8;color:#17794B}.tag.pending{background:#FFF0CF;color:#8A6410}.tag.rejected,.tag.removed{background:#FDE0E6;color:#B0213F}
 .msg{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#161B33;color:#fff;padding:11px 18px;border-radius:14px;max-width:90vw;z-index:9}
-.terms{font-size:13px;color:var(--d)}.terms li{margin:3px 0}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.row{grid-template-columns:1fr}}
+.terms{font-size:13px;color:var(--d)}.terms li{margin:3px 0}.terms a,.chk a{color:#3F4FD0}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #4F5FE0;outline-offset:2px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.row{grid-template-columns:1fr}}
 </style></head><body><div class="wrap">
 <header><div><h1>Cadence Studio</h1><small>Upload your music. Reviewed songs appear in Cadence.</small></div><div id="who"></div></header>
 <div id="app"></div></div><div class="msg" id="msg" style="display:none"></div>
 <script>
-const SB_URL = "", SB_KEY = "", CONTACT_EMAIL = ""; // paste your Supabase Project URL + anon key, and the email for copyright complaints
+const SB_URL = "", SB_KEY = ""; const CONTACT_EMAIL = (window.CADENCE_LEGAL || {}).email || ""; // paste your Supabase Project URL + anon key, and the email for copyright complaints
 const $ = id => document.getElementById(id), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let S = JSON.parse(localStorage.getItem('cs') || 'null'), isAdmin = false, tab = 'upload';
 const msg = t => { const m = $('msg'); m.textContent = t; m.style.display = ''; clearTimeout(msg.t); msg.t = setTimeout(() => m.style.display = 'none', 4500); };
@@ -38,7 +38,9 @@ async function sb(path, o = {}, retry = true){
   return r;
 }
 async function auth(kind){
-  const body = JSON.stringify({ email: $('em').value.trim(), password: $('pw').value });
+  if (kind === 'up' && !$('age').checked) return msg('Please confirm you are 18+ and agree to the Terms and Privacy Policy.');
+  const cred = { email: $('em').value.trim(), password: $('pw').value };
+  const body = JSON.stringify(kind === 'up' ? { ...cred, data: { age_confirmed: true, terms_accepted_at: new Date().toISOString() } } : cred);
   const r = await fetch(SB_URL + (kind === 'up' ? '/auth/v1/signup' : '/auth/v1/token?grant_type=password'), { method: 'POST', headers: H(0, { 'Content-Type': 'application/json' }), body });
   const d = await r.json();
   if (!r.ok) return msg(d.msg || d.error_description || d.message || 'Something went wrong');
@@ -53,7 +55,8 @@ async function boot(){
   show();
 }
 function show(){
-  if (!S) { $('app').innerHTML = `<div class="card"><h2>Artist sign in</h2><label>Email</label><input id="em" type="email" autocomplete="email"><label>Password (6+ characters)</label><input id="pw" type="password" autocomplete="current-password">
+  if (!S) { $('app').innerHTML = `<div class="card"><h2>Artist sign in</h2><label for="em">Email</label><input id="em" type="email" autocomplete="email"><label for="pw">Password (6+ characters)</label><input id="pw" type="password" autocomplete="current-password">
+    <label class="chk" style="font-size:13px"><input id="age" type="checkbox"><span>I'm 18 or older and agree to the <a href="terms.html" target="_blank" rel="noopener">Terms</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> (needed to create an account).</span></label>
     <p style="display:flex;gap:10px;margin-top:20px"><button onclick="auth('in')">Sign in</button><button class="g" onclick="auth('up')">Create account</button></p></div>`; return; }
   $('app').innerHTML = `<div class="tabs"><button class="${tab==='upload'?'on':''}" onclick="go('upload')">Upload a song</button><button class="${tab==='mine'?'on':''}" onclick="go('mine')">My songs</button>${isAdmin?`<button class="${tab==='review'?'on':''}" onclick="go('review')">Review</button>`:''}</div><div id="pane"></div>`;
   ({ upload: upView, mine: mineView, review: reviewView })[tab]();
@@ -61,12 +64,12 @@ function show(){
 const go = t => { tab = t; show(); };
 function upView(){
   $('pane').innerHTML = `<div class="card"><h2>Upload a song</h2>
-  <label>Song title</label><input id="ti" maxlength="120"><div class="row"><div><label>Artist name</label><input id="ar" maxlength="120"></div><div><label>Language</label><select id="la"><option>Punjabi</option><option>Hindi</option><option>Other</option></select></div></div>
-  <label>Genre (optional)</label><input id="ge" maxlength="40" placeholder="Pop, Folk, Hip-Hop...">
-  <div class="row"><div><label>Song file (mp3, m4a, wav, max 15 MB)</label><input id="fa" type="file" accept="audio/*"></div><div><label>Cover image (max 2 MB)</label><input id="fi" type="file" accept="image/*"></div></div>
+  <label for="ti">Song title</label><input id="ti" maxlength="120"><div class="row"><div><label for="ar">Artist name</label><input id="ar" maxlength="120"></div><div><label for="la">Language</label><select id="la"><option>Punjabi</option><option>Hindi</option><option>Other</option></select></div></div>
+  <label for="ge">Genre (optional)</label><input id="ge" maxlength="40" placeholder="Pop, Folk, Hip-Hop...">
+  <div class="row"><div><label for="fa">Song file (mp3, m4a, wav, max 15 MB)</label><input id="fa" type="file" accept="audio/*"></div><div><label for="fi">Cover image (max 2 MB)</label><input id="fi" type="file" accept="image/*"></div></div>
   <label class="chk"><input id="ok" type="checkbox"><span>I own this song, or everyone who made it (singer, writer, producer, sample owners) has given me permission. I allow Cadence to stream it and show its cover. Cadence may remove it at any time, and I can ask for it to be removed.</span></label>
   <p><button id="go" onclick="upload()">Submit for review</button></p></div>
-  <div class="card terms"><b>Before you upload</b><ul><li>Only upload music you have the rights to. Songs from films, labels or other artists will be rejected and removed.</li><li>Every song is reviewed before it appears in the app.</li><li>Copyright complaints: ${CONTACT_EMAIL ? `<a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a>` : 'add your contact email in the CONTACT_EMAIL setting'}. Reported songs are hidden while we check.</li></ul></div>`;
+  <div class="card terms"><b>Before you upload</b><ul><li>Only upload music you have the rights to. Songs from films, labels or other artists will be rejected and removed.</li><li>Every song is reviewed before it appears in the app. Read the <a href="terms.html" target="_blank" rel="noopener">Terms</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</li><li>Copyright complaints: ${CONTACT_EMAIL ? `<a href="mailto:${esc(CONTACT_EMAIL)}">${esc(CONTACT_EMAIL)}</a>` : 'add your contact email in the CONTACT_EMAIL setting'}. Reported songs are hidden while we check.</li></ul></div>`;
 }
 const dur = f => new Promise(res => { const a = new Audio(URL.createObjectURL(f)); a.onloadedmetadata = () => res(Math.round(a.duration) || 0); a.onerror = () => res(0); });
 async function put(f){
@@ -97,7 +100,13 @@ async function mineView(){
   const r = await sb(`/rest/v1/songs?select=*&owner=eq.${S.uid}&order=created_at.desc`), rows = r.ok ? await r.json() : [];
   $('pane').innerHTML = `<div class="card"><h2 style="margin-bottom:8px">My songs</h2>${rows.length ? rows.map(s => songRow(s, `<button class="r" onclick="del('${s.id}')">Delete</button>`)).join('') : '<p>No songs yet.</p>'}</div>`;
 }
-async function del(id){ if (!confirm('Delete this song?')) return; await sb('/rest/v1/songs?id=eq.' + id, { method: 'DELETE' }); mineView(); }
+async function del(id){
+  if (!confirm('Delete this song?')) return;
+  const r = await sb(`/rest/v1/songs?select=audio_url,art_url&id=eq.${id}`), x = r.ok ? (await r.json())[0] : null;
+  await sb('/rest/v1/songs?id=eq.' + id, { method: 'DELETE' });
+  if (x) { const prefixes = [x.audio_url, x.art_url].filter(Boolean).map(u => decodeURIComponent(u.split('/storage/v1/object/public/songs/')[1] || '')).filter(Boolean); if (prefixes.length) await sb('/storage/v1/object/songs', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes }) }); }
+  mineView();
+}
 async function setStatus(id, status){ await sb('/rest/v1/songs?id=eq.' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }); reviewView(); }
 async function dismiss(id){ await sb('/rest/v1/reports?id=eq.' + id, { method: 'DELETE' }); reviewView(); }
 async function reviewView(){
