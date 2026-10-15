@@ -686,6 +686,37 @@ html[data-theme="dark"] .player-bar{background:rgba(8,10,28,.6)}
 [data-theme="light"] .pick{background:linear-gradient(115deg,#4F5FE0 0%,#7A55E0 55%,#B24C94 100%)}
 [data-theme="dark"]{--text-faint:#8A92B8;--grad:linear-gradient(120deg,#4A62E8 0%,#7A4FE8 100%)}
 .nav-btn.active{background:var(--grad)}
+
+/* ===== phone fit: nothing may be wider than the screen ===== */
+html,body{max-width:100%;overflow-x:hidden}
+#app,.main,.header,.viewport{min-width:0;max-width:100%}
+.header{overflow:hidden}
+.search-box{min-width:0;flex:1 1 0}
+.search-box input{min-width:0;width:100%;text-overflow:ellipsis}
+.header-actions{flex-shrink:0}
+@media(max-width:480px){
+  .header{gap:8px;padding:10px 12px}
+  .header-actions{gap:6px}
+  .icon-btn{width:40px;height:40px}
+  .search-box{padding:0 12px;gap:8px}
+  .viewport{padding-left:12px;padding-right:12px}
+  .mnav{left:10px;right:10px}
+}
+@media(max-width:360px){.header-brand .brand-mark{width:30px;height:30px}.icon-btn{width:38px;height:38px}}
+
+@media(max-width:899px){
+  .mix-play{top:12px;bottom:auto;right:12px;width:36px;height:36px}
+  .mix-art{aspect-ratio:1.15}
+  .mix-art b{font-size:22px;max-width:100%}
+}
+#genreChips,.chips{padding-top:2px;padding-bottom:14px;margin-bottom:-10px}
+
+.artist-open{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.artist-open-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px}
+.artist-open-row b{font-weight:600}.artist-open-row span{display:flex;gap:8px;flex-wrap:wrap}
+.artist-open-row .chip{padding:7px 14px;font-size:13px;text-decoration:none}
+
+.artist-open-row{flex-direction:column;align-items:flex-start;gap:6px}
 </style>
 </head>
 <body>
@@ -698,6 +729,7 @@ html[data-theme="dark"] .player-bar{background:rgba(8,10,28,.6)}
   <symbol id="i-library" viewBox="0 0 24 24"><path d="M5 4v16M10 4v16"/><path d="m15 5.6 4.3-1 1.7 14.8-4.3 1z"/></symbol>
   <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></symbol>
   <symbol id="i-heart-fill" viewBox="0 0 24 24"><path fill="currentColor" d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M8 5.2v13.6L19 12z"/></symbol>
   <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6.5" y="5" width="3.6" height="14" rx="1" fill="currentColor" stroke="none"/><rect x="13.9" y="5" width="3.6" height="14" rx="1" fill="currentColor" stroke="none"/></symbol>
   <symbol id="i-prev" viewBox="0 0 24 24"><path fill="currentColor" d="M18 6v12l-9-6z"/><path d="M6 5.5v13"/></symbol>
@@ -778,7 +810,8 @@ html[data-theme="dark"] .player-bar{background:rgba(8,10,28,.6)}
           <div class="rail" id="railForYou"></div>
         </div>
         <div class="section"><div class="section-head"><h2 class="h2">Your artists</h2><span class="flux">Tap to search</span></div>
-          <div class="chips" id="artistChips"><button class="chip" data-act="findartist" data-name="Arjan Dhillon">Arjan Dhillon</button><button class="chip" data-act="findartist" data-name="Avi Gill">Avi Gill</button><button class="chip" data-act="findartist" data-name="Punjabi new songs">Punjabi</button><button class="chip" data-act="findartist" data-name="Hindi new songs">Hindi</button></div></div>
+          <div class="chips" id="artistChips"><button class="chip" data-act="findartist" data-name="Arjan Dhillon">Arjan Dhillon</button><button class="chip" data-act="findartist" data-name="Avi Gill">Avi Gill</button><button class="chip" data-act="findartist" data-name="Punjabi new songs">Punjabi</button><button class="chip" data-act="findartist" data-name="Hindi new songs">Hindi</button></div>
+          <div class="artist-open" id="artistOpen"></div></div>
         <div class="section" id="jmPunjabi" style="display:none"><div class="section-head"><h2 class="h2">Punjabi on Jamendo</h2><span class="flux">Free &amp; legal</span></div><div class="rail" id="railJmPunjabi"></div></div>
         <div class="section" id="jmBhangra" style="display:none"><div class="section-head"><h2 class="h2">Bhangra</h2><span class="flux">Free &amp; legal</span></div><div class="rail" id="railJmBhangra"></div></div>
         <div class="section" id="iaPunjabi" style="display:none"><div class="section-head"><h2 class="h2">Punjabi folk &amp; bhangra, free &amp; open</h2><span class="flux">Internet Archive</span></div><div class="rail" id="railIaPunjabi"></div></div>
@@ -855,6 +888,7 @@ html[data-theme="dark"] .player-bar{background:rgba(8,10,28,.6)}
         <div class="p-title" id="pTitle">Nothing playing</div>
         <div class="p-artist" id="pArtist">Pick a song to start</div>
       </div>
+      <button class="ctrl" id="fullBtn" style="display:none" onclick="openFull()" aria-label="Open the full song" title="Open the full song"><svg class="ic"><use href="#i-ext"/></svg></button>
       <button class="ctrl" id="reportBtn" style="display:none" onclick="reportCurrent()" aria-label="Report this song" title="Report this song"><svg class="ic"><use href="#i-flag"/></svg></button>
       <button class="ctrl like" data-role="like" onclick="likeCurrent()" aria-label="Like"><svg class="ic"><use href="#i-heart"/></svg></button>
     </div>
@@ -1207,6 +1241,106 @@ async function addLocalFiles(files){
 async function clearLocal(){ if (!confirm('Remove all songs you added from this device? Your original files are not touched.')) return; await idbDo('readwrite', st => st.clear()); await loadLocal(); toast('Removed'); }
 const resolveTrack = t => t && t.local ? (LOCAL.find(x => x.id === t.id) || null) : t;
 
+
+function renderArtistOpen(){   // full songs live in the official apps, so give one-tap links for the artists you follow
+  const open = (n, u) => `<a class="chip" href="${u}" target="_blank" rel="noopener">${n}</a>`;
+  $('artistOpen').innerHTML = ['Arjan Dhillon', 'Avi Gill'].map(a => { const e = encodeURIComponent(a);
+    return `<div class="artist-open-row"><b>${a}</b><span>${open('Spotify', 'https://open.spotify.com/search/' + e)}${open('JioSaavn', 'https://www.jiosaavn.com/search/' + e)}${open('YouTube Music', 'https://music.youtube.com/search?q=' + e)}</span></div>`; }).join('');
+}
+/* ---------- Spotify remote (needs Spotify Premium): search Spotify here, the sound plays in the Spotify app ---------- */
+const SPOTIFY_CLIENT_ID = "";   // paste the Client ID of your Spotify app (setup steps are in the chat)
+const SP_SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing';
+const spRedirect = () => location.origin + location.pathname;
+const sp = { tok: lsGet('cadence_spotify', null), on: false, playing: false, pos: 0, at: 0, uri: '', t: null, ui: null, pending: null, adv: false, lastPos: 0, busy: false, vt: null };
+const spReady = () => !!(SPOTIFY_CLIENT_ID && sp.tok && sp.tok.refresh_token);
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+async function spConnect(){
+  const verifier = b64url(crypto.getRandomValues(new Uint8Array(48))), state = b64url(crypto.getRandomValues(new Uint8Array(12)));
+  lsSet('cadence_sp_pkce', { verifier, state });
+  const challenge = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+  location.href = 'https://accounts.spotify.com/authorize?' + new URLSearchParams({ client_id: SPOTIFY_CLIENT_ID, response_type: 'code', redirect_uri: spRedirect(), scope: SP_SCOPES, code_challenge_method: 'S256', code_challenge: challenge, state });
+}
+async function spToken(body){
+  const r = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: SPOTIFY_CLIENT_ID, ...body }) });
+  if (!r.ok) throw new Error('token');
+  const d = await r.json();
+  sp.tok = { access_token: d.access_token, refresh_token: d.refresh_token || (sp.tok && sp.tok.refresh_token), expires_at: Date.now() + d.expires_in * 1000 - 60000 };
+  lsSet('cadence_spotify', sp.tok);
+}
+async function spCallback(){   // the page Spotify sends you back to after you allow access
+  const q = new URLSearchParams(location.search); if (!SPOTIFY_CLIENT_ID || !(q.get('code') || q.get('error'))) return;
+  const saved = lsGet('cadence_sp_pkce', null); lsSet('cadence_sp_pkce', null); history.replaceState(null, '', spRedirect());
+  if (q.get('error') || !saved || q.get('state') !== saved.state) return toast('Spotify sign-in was cancelled');
+  try { await spToken({ grant_type: 'authorization_code', code: q.get('code'), redirect_uri: spRedirect(), code_verifier: saved.verifier }); toast('Spotify connected'); profileTab = 'profile'; goView('profile'); renderProfileView(); }
+  catch (e) { toast("Couldn't connect Spotify. Check the Client ID and redirect address."); }
+}
+async function spApi(path, o = {}, retry = true){
+  if (!spReady()) throw new Error('not connected');
+  if (Date.now() > sp.tok.expires_at) { try { await spToken({ grant_type: 'refresh_token', refresh_token: sp.tok.refresh_token }); } catch (e) { spDisconnect(); throw e; } }
+  const r = await fetch('https://api.spotify.com/v1' + path, { ...o, headers: { Authorization: 'Bearer ' + sp.tok.access_token, 'Content-Type': 'application/json', ...o.headers } });
+  if (r.status === 401 && retry) { sp.tok.expires_at = 0; return spApi(path, o, false); }
+  return r;
+}
+function spStop(pause){ clearInterval(sp.t); clearInterval(sp.ui); sp.on = false; sp.playing = false; if (pause && spReady()) spApi('/me/player/pause', { method: 'PUT' }).catch(() => {}); }
+function spDisconnect(){ spStop(true); sp.tok = null; lsSet('cadence_spotify', null); toast('Spotify disconnected'); try { renderProfileView(); } catch (e) {} }
+const spPosNow = () => Math.min((cur && cur.duration) || 1e9, sp.playing ? sp.pos + (performance.now() - sp.at) / 1000 : sp.pos);
+const spTrack = x => ({ id: 'sp-' + x.id, title: x.name, artist: x.artists.map(a => a.name).join(', '), art: ((x.album.images || [])[1] || (x.album.images || [])[0] || {}).url || '', duration: Math.round(x.duration_ms / 1000), sp: true, uri: x.uri, url: (x.external_urls || {}).spotify || '' });
+async function spTracks(q){   // Spotify allows 10 results per request, so ask twice
+  if (!spReady()) return [];
+  const pages = await Promise.all([0, 10].map(o => spApi('/search?' + new URLSearchParams({ q, type: 'track', limit: 10, offset: o, market: 'IN' })).then(r => r.ok ? r.json() : null).catch(() => null)));
+  const seen = new Set();
+  return pages.flatMap(p => (p && p.tracks && p.tracks.items) || []).filter(x => x && x.uri && !seen.has(x.id) && seen.add(x.id)).map(spTrack);
+}
+async function spDevice(){
+  const r = await spApi('/me/player/devices'); if (!r.ok) return '';
+  const ds = (await r.json()).devices || [], d = ds.find(x => x.is_active) || ds.find(x => /smartphone|tablet/i.test(x.type)) || ds[0];
+  return d ? d.id : '';
+}
+async function spStart(t){
+  commitTrack(t); setPlaying(false);
+  if (!spReady()) return toast('Connect Spotify in Profile first');
+  try {
+    const dev = await spDevice();
+    if (!dev) return toast('Open the Spotify app on this phone, play any song for a moment, then try again');
+    const r = await spApi('/me/player/play?device_id=' + encodeURIComponent(dev), { method: 'PUT', body: JSON.stringify({ uris: [t.uri] }) });
+    if (r.status === 403) return toast('Spotify Premium is needed to play from Cadence');
+    if (!r.ok) return toast("Spotify couldn't play that song");
+  } catch (e) { return toast("Couldn't reach Spotify"); }
+  sp.on = true; sp.playing = true; sp.uri = t.uri; sp.pos = 0; sp.lastPos = 0; sp.at = performance.now(); sp.adv = false; setPlaying(true);
+  clearInterval(sp.t); clearInterval(sp.ui); sp.t = setInterval(spPoll, 1500); sp.ui = setInterval(updateProgress, 400);
+}
+async function spToggle(){
+  if (!sp.on) return spStart(cur);
+  const go = !sp.playing;
+  try { await spApi(go ? '/me/player/play' : '/me/player/pause', { method: 'PUT' }); } catch (e) { return; }
+  sp.pos = spPosNow(); sp.at = performance.now(); sp.playing = go; setPlaying(go);
+}
+async function spSeek(sec){ sp.pos = sec; sp.at = performance.now(); try { await spApi('/me/player/seek?position_ms=' + Math.round(sec * 1000), { method: 'PUT' }); } catch (e) {} }
+function spVolume(v){ if (!sp.on) return; clearTimeout(sp.vt); sp.vt = setTimeout(() => spApi('/me/player/volume?volume_percent=' + Math.round(v * 100), { method: 'PUT' }).catch(() => {}), 300); }
+function spPauseNow(){ if (sp.on && sp.playing) { spApi('/me/player/pause', { method: 'PUT' }).catch(() => {}); sp.playing = false; setPlaying(false); } }
+async function spPoll(){   // keeps Cadence in step with the Spotify app: progress, play/pause, end of song
+  if (!sp.on || sp.busy) return; sp.busy = true;
+  try {
+    const r = await spApi('/me/player'); if (!sp.on) return;
+    if (r.status === 204) { sp.playing = false; setPlaying(false); return; }
+    if (!r.ok) return;
+    const s = await r.json(), it = s.item; if (!it) return;
+    const pos = (s.progress_ms || 0) / 1000, dur = (cur && cur.sp && cur.duration) || 0, prev = sp.lastPos;
+    if (it.uri !== sp.uri) {
+      if (dur && prev >= dur - 6 && !sp.adv) { sp.adv = true; advance(true); return; }   // our song ended and Spotify carried on by itself
+      sp.uri = it.uri; sp.pos = pos; sp.at = performance.now(); sp.lastPos = pos; sp.playing = s.is_playing; sp.adv = false;
+      commitTrack(spTrack(it)); setPlaying(s.is_playing); return;                        // you changed the song inside the Spotify app: follow it
+    }
+    sp.playing = s.is_playing; sp.pos = pos; sp.at = performance.now(); sp.lastPos = pos; setPlaying(s.is_playing);
+    if (!s.is_playing && !sp.adv && dur && prev >= dur - 6 && (pos >= dur - 2 || pos < 1)) { sp.adv = true; advance(true); }
+  } catch (e) {} finally { sp.busy = false; }
+}
+function spotifyHTML(){
+  if (!SPOTIFY_CLIENT_ID) return '';
+  if (spReady()) return `<div class="settings-group"><div class="settings-group-title">Spotify</div><div class="setting-row"><div><b>Spotify is connected</b><div class="sub">Search finds Spotify songs. Keep the Spotify app open on this phone: it plays the sound, ad-free with Premium.</div></div><button class="btn ghost sm" onclick="spDisconnect()">Disconnect</button></div></div>`;
+  return `<div class="settings-group"><div class="settings-group-title">Spotify</div><div class="setting-row"><div><b>Play any song with Spotify Premium</b><div class="sub">Search Spotify from Cadence and play it in your Spotify app.</div></div><button class="btn sm" onclick="spConnect()">Connect</button></div><div class="sub" style="margin-top:8px">Redirect address to add in your Spotify app: <code>${esc(spRedirect())}</code></div></div>`;
+}
+
 /* ---------- Install as an app ---------- */
 let installEv = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEv = e; try { if (typeof view !== 'undefined' && view === 'profile') renderProfileView(); } catch (x) {} });
@@ -1270,6 +1404,25 @@ function accountHTML(){
     <label class="agree"><input type="checkbox" id="cAge"><span>I'm 18 or older and agree to the <a href="terms.html" target="_blank" rel="noopener">Terms</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> (needed to create an account; signing in doesn't need it)</span></label>
     <div style="display:flex;gap:10px"><button class="btn sm" onclick="cAuth('in')">Sign in</button><button class="btn ghost sm" onclick="cAuth('up')">Create account</button></div></div>`;
 }
+/* ---------- Apple Music previews (30 s, official and free) + "open in another app" links ---------- */
+const itCache = new Map();
+function itunesTracks(q){
+  if (itCache.has(q)) return itCache.get(q);
+  const p = new Promise(res => {
+    const cb = 'itcb' + Math.random().toString(36).slice(2), sc = document.createElement('script');
+    const done = list => { clearTimeout(tm); delete window[cb]; sc.remove(); res(list); }, tm = setTimeout(() => done([]), 7000);
+    window[cb] = d => done(((d && d.results) || []).filter(r => r.previewUrl).map(r => ({
+      id: 'it-' + r.trackId, title: r.trackName, artist: r.artistName + ' \u00B7 30 s preview', art: (r.artworkUrl100 || '').replace('100x100', '300x300'),
+      audio: r.previewUrl, duration: 30, url: r.trackViewUrl || '' })));
+    sc.onerror = () => done([]);
+    sc.src = 'https://itunes.apple.com/search?' + new URLSearchParams({ term: q, media: 'music', entity: 'song', country: 'IN', limit: 15, callback: cb });
+    document.head.appendChild(sc);
+  });
+  itCache.set(q, p); return p;
+}
+const appLinks = q => { const e = encodeURIComponent(q); return [['Spotify', 'https://open.spotify.com/search/' + e], ['JioSaavn', 'https://www.jiosaavn.com/search/' + e], ['YouTube Music', 'https://music.youtube.com/search?q=' + e], ['Gaana', 'https://gaana.com/search/' + e], ['Apple Music', 'https://music.apple.com/search?term=' + e]]; };
+function openFull(){ if (cur && cur.url) window.open(cur.url, '_blank', 'noopener'); }
+
 /* ---------- Internet Archive: free & open music (only items whose own page says Creative Commons or public domain) ---------- */
 const IA_CACHE = new Map();
 function iaLicense(url){
@@ -1476,12 +1629,13 @@ async function runSearch(q){
   $('searchArea').innerHTML = skRows(7);
   const needle = q.toLowerCase();
   const custom = CUSTOM_TRACKS.concat(COMMUNITY, LOCAL).filter(t => (t.title + ' ' + t.artist).toLowerCase().includes(needle));
-  const [j1, j2, a, y, ia] = await Promise.allSettled([
+  const [j1, j2, a, y, ia, spr] = await Promise.allSettled([
     jamendo('tracks', { namesearch: q, limit: 20 }),
     jamendo('tracks', { search: q, limit: 20 }),
     audiusFetch('/tracks/search', { query: q, limit: 15 }),
     q.length > 2 ? youtubeSearch(q, 5) : Promise.resolve([]),
-    q.length > 2 ? iaTracks(q, 6) : Promise.resolve([])
+    q.length > 2 ? iaTracks(q, 6) : Promise.resolve([]),
+    q.length > 2 && spReady() ? spTracks(q) : Promise.resolve([])
   ]);
   if (token !== searchToken) return; // a newer search started
   const seen = new Set();
@@ -1489,11 +1643,13 @@ async function runSearch(q){
     .filter(t => !seen.has(t.id) && seen.add(t.id));
   const songs = [...custom, ...interleave(jam, a.status === 'fulfilled' ? a.value : [])];
   const vids = y.status === 'fulfilled' ? y.value : [];
-  const free = ia.status === 'fulfilled' ? ia.value.slice(0, 20) : [];
+  const free = ia.status === 'fulfilled' ? ia.value.slice(0, 20) : [], spl = spr.status === 'fulfilled' ? spr.value : [];
   let html = '';
+  if (spl.length) html += `<div class="section-head"><h2 class="h2">On Spotify</h2><span class="sub">Plays in your Spotify app &middot; Premium</span></div><div id="spRows"></div>`;
   if (songs.length) {
     html += `<div class="section-head"><h2 class="h2">Songs</h2><span class="sub">${songs.length} results</span></div><div id="searchRows"></div>`;
   }
+  html += '<div id="prevBox"></div>';
   if (free.length) {
     html += `<div class="section-head" style="margin-top:26px"><h2 class="h2">Free &amp; open music</h2><span class="sub">Creative Commons or public domain, from the Internet Archive</span></div><div id="freeRows"></div>`;
   }
@@ -1503,10 +1659,18 @@ async function runSearch(q){
         <img src="${esc(v.thumb || '')}" alt=""><div class="row-meta"><div class="row-title">${esc(v.title)}</div><div class="row-artist">${esc(v.channel)}</div></div>${ic('play', 'sm')}
       </div></div>`).join('')}</div>`;
   }
-  if (!html) html = stateHTML(`No results for "${q}"`, 'Try a different spelling, an artist, or a mood.');
+  if (!songs.length && !free.length && !vids.length && !spl.length) html = stateHTML(`No results for "${q}"`, 'Try a different spelling, an artist, or a mood.') + html;
+  if (q.length > 2) html += `<div class="section-head" style="margin-top:26px"><h2 class="h2">Find the full song</h2><span class="sub">Opens in the official app or site</span></div><div class="chips" style="flex-wrap:wrap;margin-bottom:8px">${appLinks(q).map(([n, u]) => `<a class="chip" href="${esc(u)}" target="_blank" rel="noopener">${n}</a>`).join('')}</div>`;
   $('searchArea').innerHTML = html;
+  if (spl.length) renderRows($('spRows'), 'search-sp', spl);
   if (songs.length) renderRows($('searchRows'), 'search', songs);
+  if (prev.length) renderRows($('prevRows'), 'search-prev', prev);
   if (free.length) renderRows($('freeRows'), 'search-free', free);
+  if (q.length > 2) itunesTracks(q).then(prev => {   // arrives after the rest, so a slow Apple never delays the results
+    if (token !== searchToken || !prev.length || !$('prevBox')) return;
+    $('prevBox').innerHTML = `<div class="section-head" style="margin-top:26px"><h2 class="h2">Previews from Apple Music</h2><span class="sub">30 seconds each. Play one, then tap "open the full song".</span></div><div id="prevRows"></div>`;
+    renderRows($('prevRows'), 'search-prev', prev);
+  });
 }
 function toggleYT(id){
   const row = $('yt-' + id); if (!row) return;
@@ -1726,7 +1890,7 @@ function renderProfileView(){
 function profileHTML(){
   const name = lsGet('cadence_name', 'You');
   const top = topArtist();
-  return `${installHTML()}${accountHTML()}<div class="profile-head">
+  return `${installHTML()}${spotifyHTML()}${accountHTML()}<div class="profile-head">
       <div class="avatar-big">${esc(initials(name))}</div>
       <div>
         <input class="profile-name-field" id="profileNameInput" value="${esc(name)}" maxlength="24" placeholder="Your name"
@@ -1878,6 +2042,8 @@ function commitTrack(t){
 function load(t){
   t = resolveTrack(t); if (!t) return toast('That song was removed from this device');
   killFade(); xf.pre = null;
+  if (t.sp) { audio.pause(); return spStart(t); }
+  if (sp.on) spStop(true);
   audio.volume = userVol;
   audio.src = t.audio;
   const p = audio.play(); if (p && p.catch) p.catch(() => {});
@@ -1899,7 +2065,7 @@ function killFade(){
 }
 function preloadNext(){
   const n = nextIndex(true); if (n < 0 || n === qi) return;
-  const el = otherDeck(), t = resolveTrack(queue[n]); if (!t) return;
+  const el = otherDeck(), t = resolveTrack(queue[n]); if (!t || t.sp) return;
   if (eq.ready) hookEQ(el);
   el.volume = 0; el.preload = 'auto'; el.src = t.audio; el.load();
   xf.pre = { idx: n, el };
@@ -1908,7 +2074,7 @@ function startCrossfade(len){
   const pre = xf.pre; xf.pre = null;
   if (!pre || !queue[pre.idx]) return;
   if (pre.el.readyState < 3) return;
-  const out = audio, inn = pre.el, t = resolveTrack(queue[pre.idx]); if (!t) return;
+  const out = audio, inn = pre.el, t = resolveTrack(queue[pre.idx]); if (!t || t.sp) return;
   const go = inn.play(), was = cur;
   const begin = () => {
     if (audio !== out || cur !== was) { inn.pause(); return; }
@@ -1945,11 +2111,12 @@ function hookEQ(el){
 }
 function togglePlay(){
   if (!cur) { const first = LISTS.trending && LISTS.trending[0]; if (first) { curKey = ''; playFrom('trending', 0); } return; }
+  if (cur.sp) return spToggle();
   if (audio.paused) { const p = audio.play(); if (p && p.catch) p.catch(() => {}); } else audio.pause();
 }
 function advance(auto){
   if (!queue.length) return;
-  if (repeat === 2 && auto) { audio.currentTime = 0; audio.play(); return; }
+  if (repeat === 2 && auto) { if (cur && cur.sp) { spStart(cur); return; } audio.currentTime = 0; audio.play(); return; }
   const n = nextIndex(auto);
   if (n < 0) { audio.pause(); audio.currentTime = 0; return; }
   qi = n; load(queue[qi]);
@@ -1957,7 +2124,8 @@ function advance(auto){
 function next(){ advance(false); }
 function prev(){
   if (!queue.length) return;
-  if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+  if (cur && cur.sp && sp.on) { if (spPosNow() > 3) { spSeek(0); return; } }
+  else if (audio.currentTime > 3) { audio.currentTime = 0; return; }
   qi = (qi - 1 + queue.length) % queue.length; load(queue[qi]);
 }
 function toggleShuffle(){ shuffle = !shuffle; syncModes(); toast(shuffle ? 'Shuffle on' : 'Shuffle off'); }
@@ -1970,7 +2138,7 @@ function syncModes(){
   });
 }
 function setVol(v){
-  v = Number(v); userVol = v; if (!xf.on) audio.volume = v; deckA.muted = deckB.muted = false;
+  v = Number(v); userVol = v; spVolume(v); if (!xf.on) audio.volume = v; deckA.muted = deckB.muted = false;
   $('vol').value = v; $('vol').style.setProperty('--v', (v * 100) + '%');
   $('volIc').querySelector('use').setAttribute('href', v === 0 ? '#i-mute' : '#i-volume');
   lsSet('cadence_vol', v);
@@ -2000,6 +2168,7 @@ function onTrackChange(){
   document.title = `${t.title} · Cadence`;
   setBgArt(t.art);
   $('reportBtn').style.display = t.dbId ? '' : 'none';
+  $('fullBtn').style.display = t.url ? '' : 'none';
   document.body.classList.add('has-track');
   $('mini').classList.add('show');
   markNow(); syncLikes();
@@ -2018,7 +2187,7 @@ function lockScreenPos(){
 function updateProgress(){
   lockScreenPos();
   if (dragging) return;
-  const d = (isFinite(audio.duration) && audio.duration) || (cur && cur.duration) || 0, c = audio.currentTime || 0;
+  const isSp = cur && cur.sp, d = isSp ? (cur.duration || 0) : ((isFinite(audio.duration) && audio.duration) || (cur && cur.duration) || 0), c = isSp ? (sp.on ? spPosNow() : 0) : (audio.currentTime || 0);
   const pct = d ? Math.min(100, c / d * 100) : 0;
   document.querySelectorAll('[data-role="fill"]').forEach(el => el.style.width = pct + '%');
   document.querySelectorAll('[data-role="cur"]').forEach(el => el.textContent = fmt(c));
@@ -2044,13 +2213,13 @@ bindDeck(deckA); bindDeck(deckB);
 function bindScrub(el){
   const seek = e => {
     const r = el.getBoundingClientRect(), p = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-    const d = (isFinite(audio.duration) && audio.duration) || (cur && cur.duration) || 0;
-    if (d) audio.currentTime = p * d;
+    const d = cur && cur.sp ? (cur.duration || 0) : ((isFinite(audio.duration) && audio.duration) || (cur && cur.duration) || 0);
+    if (d) { if (cur && cur.sp) { sp.pending = p * d; sp.pos = p * d; sp.at = performance.now(); } else audio.currentTime = p * d; }
     document.querySelectorAll('[data-role="fill"]').forEach(f => f.style.width = p * 100 + '%');
   };
   el.addEventListener('pointerdown', e => { dragging = true; el.setPointerCapture(e.pointerId); el.classList.add('drag'); seek(e); });
   el.addEventListener('pointermove', e => { if (dragging) seek(e); });
-  const end = () => { dragging = false; el.classList.remove('drag'); updateProgress(); };
+  const end = () => { dragging = false; el.classList.remove('drag'); if (sp.pending != null) { const v = sp.pending; sp.pending = null; spSeek(v); } updateProgress(); };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
 }
 
@@ -2136,7 +2305,7 @@ function setSleep(min){
     const v0 = audio.volume; let step = 0;
     const iv = setInterval(() => {
       step++; audio.volume = Math.max(0, v0 * (1 - step / 20));
-      if (step >= 20) { clearInterval(iv); audio.pause(); audio.volume = v0; sleepMin = 0; renderTune(); $('sleepNote').textContent = ''; toast('Sleep timer ended'); }
+      if (step >= 20) { clearInterval(iv); audio.pause(); spPauseNow(); audio.volume = v0; sleepMin = 0; renderTune(); $('sleepNote').textContent = ''; toast('Sleep timer ended'); }
     }, 130);
   }, min * 60000);
   renderTune(); if (min) toast(`Sleep timer set for ${min} min`);
@@ -2290,7 +2459,7 @@ if ('mediaSession' in navigator) {
    INIT
    ====================================================================== */
 (function init(){
-  updateAvatar(); initConsent(); loadLocal();
+  updateAvatar(); initConsent(); loadLocal(); renderArtistOpen(); spCallback();
   applyTheme(lsGet('cadence_theme', 'light'));
   setVol(lsGet('cadence_vol', 0.9));
   initWaves();
