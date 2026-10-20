@@ -717,6 +717,47 @@ html,body{max-width:100%;overflow-x:hidden}
 .artist-open-row .chip{padding:7px 14px;font-size:13px;text-decoration:none}
 
 .artist-open-row{flex-direction:column;align-items:flex-start;gap:6px}
+/* source badge + credit line */
+.src-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.02em;line-height:1;padding:3px 6px;border-radius:999px;background:rgba(127,127,127,.22);color:inherit;margin-right:6px;vertical-align:1px;white-space:nowrap;}
+.src-credit{font-size:11.5px;color:var(--text-faint);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.src-credit:empty{display:none;}
+.src-credit a{color:var(--text-dim);text-decoration:underline;}
+.fp-meta .src-credit{white-space:normal;}
+/* tap + tab motion (uses the separate 'scale' property so it is never overridden by the entry animations) */
+html{-webkit-tap-highlight-color:transparent;}
+.card,.row,.quick-card,.chip,.btn,.nav-btn,.mnav-btn,.mini,.side-pl,.setting-row,.ctrl,.icon-btn{touch-action:manipulation;}
+.card{transition:scale 200ms var(--ease);}
+.card:active{scale:.965;}
+.row{transition:background 160ms ease,scale 160ms var(--ease);}
+.row:active{scale:.985;background:var(--surface-hover);}
+.quick-card{transition:background 200ms ease,transform 240ms var(--ease),scale 160ms var(--ease);}
+.quick-card:active{scale:.97;}
+.chip:active{scale:.93;}
+.side-pl{transition:background 160ms ease,color 160ms ease,scale 160ms var(--ease);}
+.side-pl:active{scale:.97;}
+.nav-btn{transition:background 200ms ease,color 200ms ease,transform 200ms var(--ease),scale 160ms var(--ease);}
+.nav-btn:active{scale:.96;}
+.nav-btn.active{animation:navPop 380ms cubic-bezier(.34,1.56,.64,1);}
+@keyframes navPop{from{scale:.9;}to{scale:1;}}
+.mnav-btn{transition:color 200ms ease,scale 160ms var(--ease);}
+.mnav-btn:active{scale:.9;}
+.mnav-btn .ic{transition:transform 460ms cubic-bezier(.34,1.56,.64,1);}
+.mnav-btn:active .ic{transform:scale(.86);}
+.mnav-btn.rip-host{clip-path:inset(8px 6px round var(--r-lg));}   /* keep the ripple inside the same rounded shape as the sliding pill */
+.mnav-pill{transition:transform 480ms cubic-bezier(.34,1.3,.64,1);}
+.mini{transition:transform 420ms var(--ease),opacity 300ms,scale 160ms var(--ease);}
+.mini:active{scale:.985;}
+/* tab change: the new screen slides in from the side you are moving towards */
+@keyframes viewInFwd{from{opacity:0;transform:translateX(34px) scale(.985);}to{opacity:1;transform:none;}}
+@keyframes viewInBack{from{opacity:0;transform:translateX(-34px) scale(.985);}to{opacity:1;transform:none;}}
+#viewport[data-dir="fwd"] .view.active{animation:viewInFwd 440ms var(--ease) both;}
+#viewport[data-dir="back"] .view.active{animation:viewInBack 440ms var(--ease) both;}
+/* tap ripple */
+.rip-host{overflow:hidden;}
+.rip-static{position:relative;}
+.rip{position:absolute;border-radius:50%;pointer-events:none;background:currentColor;opacity:0;transform:scale(0);animation:rip 560ms var(--ease) forwards;}
+.card-art-wrap .rip{background:#fff;}
+@keyframes rip{from{transform:scale(0);opacity:.22;}to{transform:scale(1);opacity:0;}}
 </style>
 </head>
 <body>
@@ -816,6 +857,8 @@ html,body{max-width:100%;overflow-x:hidden}
         <div class="section" id="jmBhangra" style="display:none"><div class="section-head"><h2 class="h2">Bhangra</h2><span class="flux">Free &amp; legal</span></div><div class="rail" id="railJmBhangra"></div></div>
         <div class="section" id="iaPunjabi" style="display:none"><div class="section-head"><h2 class="h2">Punjabi folk &amp; bhangra, free &amp; open</h2><span class="flux">Internet Archive</span></div><div class="rail" id="railIaPunjabi"></div></div>
         <div class="section" id="jmHindi" style="display:none"><div class="section-head"><h2 class="h2">Hindi on Jamendo</h2><span class="flux">Free &amp; legal</span></div><div class="rail" id="railJmHindi"></div></div>
+        <div class="section" id="audDesi" style="display:none"><div class="section-head"><h2 class="h2">Punjabi &amp; Hindi on Audius</h2><span class="flux">Artist uploads</span></div><div class="rail" id="railAudDesi"></div></div>
+        <div class="section" id="jmInstr" style="display:none"><div class="section-head"><h2 class="h2">Instrumental</h2><span class="flux">Free &amp; legal</span></div><div class="rail" id="railJmInstr"></div></div>
         <div class="section" id="devSection" style="display:none"><div class="section-head"><h2 class="h2">On this device</h2><button class="chip" onclick="$('localPick').click()">Add songs</button></div><div class="rail" id="railDevice"></div></div>
         <div class="section" id="pjSection" style="display:none"><div class="section-head"><h2 class="h2">New Punjabi</h2><span class="flux">Community</span></div><div class="rail" id="railPunjabi"></div></div>
         <div class="section" id="hiSection" style="display:none"><div class="section-head"><h2 class="h2">New Hindi</h2><span class="flux">Community</span></div><div class="rail" id="railHindi"></div></div>
@@ -887,6 +930,7 @@ html,body{max-width:100%;overflow-x:hidden}
       <div class="p-meta">
         <div class="p-title" id="pTitle">Nothing playing</div>
         <div class="p-artist" id="pArtist">Pick a song to start</div>
+        <div class="src-credit" id="pSrc"></div>
       </div>
       <button class="ctrl" id="fullBtn" style="display:none" onclick="openFull()" aria-label="Open the full song" title="Open the full song"><svg class="ic"><use href="#i-ext"/></svg></button>
       <button class="ctrl" id="reportBtn" style="display:none" onclick="reportCurrent()" aria-label="Report this song" title="Report this song"><svg class="ic"><use href="#i-flag"/></svg></button>
@@ -976,7 +1020,7 @@ html,body{max-width:100%;overflow-x:hidden}
     </div>
 
     <div class="fp-meta">
-      <div style="min-width:0;flex:1"><div class="fp-title" id="fpTitle">—</div><div class="fp-artist" id="fpArtist">—</div></div>
+      <div style="min-width:0;flex:1"><div class="fp-title" id="fpTitle">—</div><div class="fp-artist" id="fpArtist">—</div><div class="src-credit" id="fpSrc"></div></div>
       <button class="ctrl like" data-role="like" onclick="likeCurrent()" aria-label="Like"><svg class="ic lg"><use href="#i-heart"/></svg></button>
     </div>
     <div>
@@ -1034,7 +1078,8 @@ html,body{max-width:100%;overflow-x:hidden}
    ====================================================================== */
 const JAMENDO_CLIENT_ID = "d851a95e";
 const AUDIUS_APP = "Cadence";
-const AUDIUS_BASE = "https://discoveryprovider.audius.co/v1";
+const AUDIUS_BASE = "https://api.audius.co/v1";   // current documented API host (the old discoveryprovider host is no longer the recommended one)
+const AUDIUS_HIDE_ALL_RIGHTS_RESERVED = false;   // set true to also hide tracks whose artist chose "All rights reserved" (stricter; see the audit report)
 // YouTube fallback (plays inside YouTube's own embedded player, with YouTube's ads).
 // Restricted to your github.io site in Google Cloud, so it is safe to keep here.
 const YOUTUBE_API_KEY = "AIzaSyA6an_GN9LKWfcJCtxhbr8zQuPDnxwbk-o";
@@ -1065,6 +1110,41 @@ const art = t => (t && t.art) || PH;
 function setBgArt(u){ document.documentElement.style.setProperty('--track-art', u ? 'url("' + String(u).replace(/"/g, '%22') + '")' : 'none'); }
 function imgFail(el){ el.onerror = null; el.src = PH; }
 
+/* ---------- Where each song comes from, and how it is licensed ---------- */
+const SRC_LABEL = { jamendo: 'Jamendo', audius: 'Audius', ia: 'Internet Archive', apple: 'Apple preview', spotify: 'Spotify', community: 'Artist upload', local: 'Your file' };
+const SRC_SHORT = { ia: 'Archive', apple: 'Preview', local: 'Local' };
+function srcOf(t){   // new tracks carry t.src; older saved ones are recognised by their id
+  if (!t) return '';
+  if (t.src) return t.src;
+  if (t.local) return 'local';
+  const id = String(t.id == null ? '' : t.id);
+  if (id.startsWith('audius-')) return 'audius';
+  if (id.startsWith('ia-')) return 'ia';
+  if (id.startsWith('it-')) return 'apple';
+  if (id.startsWith('sp-') || t.sp) return 'spotify';
+  if (id.startsWith('cm-')) return 'community';
+  if (id.startsWith('lc-')) return 'local';
+  if (/^\d+$/.test(id)) return 'jamendo';
+  return '';
+}
+const safeUrl = u => /^https?:\/\//i.test(String(u || '')) ? String(u) : '';
+const badgeHTML = t => { const s = srcOf(t); return s ? `<span class="src-badge">${esc(SRC_SHORT[s] || SRC_LABEL[s])}</span>` : ''; };
+function creditHTML(t){   // one line under the title: source, licence and a link back to the song's own page
+  const s = srcOf(t); if (!s) return '';
+  const a = (u, txt) => { u = safeUrl(u); return u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(txt)}</a>` : esc(txt); };
+  const b = `<span class="src-badge">${esc(SRC_LABEL[s])}</span>`;
+  if (s === 'jamendo') return `${b}${t.licUrl ? a(t.licUrl, t.lic || 'Licence') : 'Licence on the track page'} &middot; ${a(t.link || 'https://www.jamendo.com/track/' + encodeURIComponent(t.id), 'View on Jamendo')}`;
+  if (s === 'ia') {
+    const item = String(t.id).slice(3).replace(/-\d+$/, '');
+    return `${b}Uploader-declared licence${t.lic ? ': ' : ''}${t.lic ? a(t.licUrl, t.lic) : ''} &middot; ${a(t.link || 'https://archive.org/details/' + encodeURIComponent(item), 'View item')}`;
+  }
+  if (s === 'audius') return `${b}${t.lic ? 'Licence: ' + esc(t.lic) : 'Licence not stated'} &middot; ${a(t.link || 'https://audius.co', 'View on Audius')}`;
+  if (s === 'apple') return `${b}30-second preview only`;
+  if (s === 'spotify') return `${b}Plays in your Spotify app`;
+  if (s === 'local') return `${b}Plays from this device`;
+  return b;
+}
+
 function toast(msg){
   const el = document.createElement('div');
   el.className = 'toast'; el.textContent = msg;
@@ -1088,25 +1168,49 @@ const isLiked = id => !!likes[String(id)];
 /* ======================================================================
    MUSIC SOURCES: Jamendo, Audius, YouTube
    ====================================================================== */
-async function jamendo(path, params){
-  const qs = new URLSearchParams({ client_id: JAMENDO_CLIENT_ID, format: 'json', ...params });
-  const res = await fetch(`https://api.jamendo.com/v3.0/${path}/?${qs}`);
-  if (!res.ok) throw new Error('Jamendo request failed');
-  return res.json();
+const API_CACHE = new Map();   // url -> { t, p }
+function cachedJSON(url, ttl = 300000){
+  const hit = API_CACHE.get(url);
+  if (hit && Date.now() - hit.t < ttl) return hit.p;
+  const p = fetch(url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  API_CACHE.set(url, { t: Date.now(), p });
+  p.catch(() => { if (API_CACHE.get(url) && API_CACHE.get(url).p === p) API_CACHE.delete(url); });
+  if (API_CACHE.size > 120) API_CACHE.delete(API_CACHE.keys().next().value);
+  return p;
 }
-const toTrackJ = r => ({ id: String(r.id), title: r.name, artist: r.artist_name, art: r.album_image || r.image || '', audio: r.audio, duration: r.duration || 0 });
+async function jamendo(path, params){
+  const base = path === 'tracks' ? { type: 'single albumtrack' } : {};   // Jamendo returns only album tracks unless singles are asked for too
+  const qs = new URLSearchParams({ client_id: JAMENDO_CLIENT_ID, format: 'json', ...base, ...params });
+  return cachedJSON(`https://api.jamendo.com/v3.0/${path}/?${qs}`);
+}
+const toTrackJ = r => ({ id: String(r.id), title: r.name, artist: r.artist_name, art: r.album_image || r.image || '', audio: r.audio, duration: r.duration || 0,
+  src: 'jamendo', lic: iaLicense(r.license_ccurl), licUrl: safeUrl(r.license_ccurl), link: safeUrl(r.shareurl) });
 const jamTracks = r => ((r && r.results) || []).filter(x => x.audio).map(toTrackJ);
 
+/* Only offer a track if Audius says it can be streamed in full by an app like this one.
+   Gated, unlisted, deleted, unavailable or key-restricted tracks are skipped, and so is anything we can't identify.
+   Being returned by the API is not, on its own, permission to play a track. */
+function audiusPlayable(r){
+  if (!r || !r.id || !r.title) return false;
+  if (r.is_delete || r.is_unlisted || r.is_available === false) return false;
+  if (r.is_streamable === false) return false;
+  if (r.is_stream_gated || r.stream_conditions) return false;
+  if (r.access && r.access.stream === false) return false;
+  if (Array.isArray(r.allowed_api_keys) && r.allowed_api_keys.length) return false;   // artist limited streaming to specific apps; Cadence isn't one
+  if (AUDIUS_HIDE_ALL_RIGHTS_RESERVED && /all rights reserved/i.test(String(r.license || ''))) return false;
+  return true;
+}
 const toTrackA = r => ({
   id: 'audius-' + r.id, title: r.title, artist: (r.user && r.user.name) || 'Unknown artist',
   art: r.artwork ? (r.artwork['480x480'] || r.artwork['150x150'] || r.artwork['1000x1000'] || '') : '',
-  audio: `${AUDIUS_BASE}/tracks/${r.id}/stream?app_name=${encodeURIComponent(AUDIUS_APP)}`, duration: r.duration || 0
+  audio: `${AUDIUS_BASE}/tracks/${encodeURIComponent(r.id)}/stream?app_name=${encodeURIComponent(AUDIUS_APP)}`, duration: r.duration || 0,
+  src: 'audius', lic: String(r.license || '').trim().slice(0, 60),
+  link: r.permalink && String(r.permalink).startsWith('/') ? 'https://audius.co' + r.permalink : safeUrl(r.permalink)
 });
 async function audiusFetch(path, params){
   const qs = new URLSearchParams({ app_name: AUDIUS_APP, ...params });
-  const res = await fetch(`${AUDIUS_BASE}${path}?${qs}`);
-  if (!res.ok) throw new Error('Audius request failed');
-  return ((await res.json()).data || []).map(toTrackA);
+  const body = await cachedJSON(`${AUDIUS_BASE}${path}?${qs}`);
+  return ((body && body.data) || []).filter(audiusPlayable).map(toTrackA);
 }
 
 const ytCache = {};
@@ -1133,7 +1237,7 @@ function cardHTML(t, key, i){
     <div class="card-art-wrap"><img class="card-art" loading="lazy" src="${esc(art(t))}" alt="" onerror="imgFail(this)">
       <button class="card-like like ${liked ? 'on' : ''}" data-act="like" data-id="${id}" aria-label="Like">${ic(liked ? 'heart-fill' : 'heart', 'sm')}</button>
       <div class="card-play">${ic('play')}</div></div>
-    <div class="card-title">${esc(t.title)}</div><div class="card-sub">${esc(t.artist)}</div></div>`;
+    <div class="card-title">${esc(t.title)}</div><div class="card-sub">${badgeHTML(t)}${esc(t.artist)}</div></div>`;
 }
 function rowHTML(t, i, key, o){
   o = o || {};
@@ -1142,7 +1246,7 @@ function rowHTML(t, i, key, o){
     <div class="row-num"><span class="n">${i + 1}</span>${ic('play', 'sm pl')}<span class="eq"><i></i><i></i><i></i></span></div>
     <img class="row-art" loading="lazy" src="${esc(art(t))}" alt="" onerror="imgFail(this)">
     <div class="row-meta"><div class="row-title">${esc(t.title)}</div>
-      <div class="row-artist"><span data-act="artist" data-artist="${esc(t.artist)}">${esc(t.artist)}</span></div>
+      <div class="row-artist">${badgeHTML(t)}<span data-act="artist" data-artist="${esc(t.artist)}">${esc(t.artist)}</span></div>
       ${o.reason ? `<div class="row-reason">${esc(o.reason)}</div>` : ''}</div>
     <div class="row-dur">${t.duration ? fmt(t.duration) : ''}</div>
     ${o.remove ? `<button class="row-btn" data-act="rmpl" data-pl="${esc(o.remove)}" data-id="${id}" aria-label="Remove">${ic('close', 'sm')}</button>`
@@ -1386,6 +1490,25 @@ function legalHTML(){
     <div class="setting-row"><div><b>Download my data</b><div class="sub">Likes, playlists and history as a file</div></div><button class="btn ghost sm" onclick="exportMine()">Download</button></div>
     ${cloud.s ? `<div class="setting-row"><div><b>Delete my account</b><div class="sub">Removes your login, synced data and uploaded songs</div></div><button class="btn ghost sm" onclick="deleteAccount()">Delete</button></div>` : ''}</div>`;
 }
+(function tapMotion(){   // soft ripple where you touch
+  const reduce = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+  const SEL = '.row,.chip,.btn,.nav-btn,.mnav-btn,.quick-card,.setting-row,.side-pl,.card-art-wrap';
+  document.addEventListener('touchstart', () => {}, { passive: true });   // lets :active press effects work on iPhones too
+  document.addEventListener('pointerdown', e => {
+    if (reduce.matches || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const t = e.target; if (!t || !t.closest) return;
+    const host = t.closest(SEL); if (!host || t.closest('input,select,textarea,.scrub,.vol')) return;
+    const inner = t.closest('button,a'); if (inner && inner !== host && host.contains(inner)) return;   // pressing a like/more button inside a row is its own tap
+    const r = host.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2;
+    if (getComputedStyle(host).position === 'static') host.classList.add('rip-static');
+    host.classList.add('rip-host');
+    const el = document.createElement('span'); el.className = 'rip';
+    el.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
+    host.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+    setTimeout(() => el.remove(), 1000);
+  }, { passive: true });
+})();
 (function a11y(){   // make cards usable with a keyboard or screen reader
   const mark = root => root && root.querySelectorAll && root.querySelectorAll('[data-act]:not(button):not(a):not(input):not([tabindex])').forEach(el => {
     el.tabIndex = 0; el.setAttribute('role', 'button');
@@ -1413,7 +1536,7 @@ function itunesTracks(q){
     const done = list => { clearTimeout(tm); delete window[cb]; sc.remove(); res(list); }, tm = setTimeout(() => done([]), 7000);
     window[cb] = d => done(((d && d.results) || []).filter(r => r.previewUrl).map(r => ({
       id: 'it-' + r.trackId, title: r.trackName, artist: r.artistName + ' \u00B7 30 s preview', art: (r.artworkUrl100 || '').replace('100x100', '300x300'),
-      audio: r.previewUrl, duration: 30, url: r.trackViewUrl || '' })));
+      audio: r.previewUrl, duration: 30, url: r.trackViewUrl || '', src: 'apple' })));
     sc.onerror = () => done([]);
     sc.src = 'https://itunes.apple.com/search?' + new URLSearchParams({ term: q, media: 'music', entity: 'song', country: 'IN', limit: 15, callback: cb });
     document.head.appendChild(sc);
@@ -1435,9 +1558,11 @@ const iaSecs = v => { v = String(v || ''); if (v.includes(':')) return v.split('
 async function iaTracks(q, items = 8){
   const key = q.toLowerCase() + items; if (IA_CACHE.has(key)) return IA_CACHE.get(key);
   const p = new URLSearchParams({ q: `(${q}) AND mediatype:audio`, rows: String(items + 6), output: 'json', sort: 'downloads desc' });
-  ['identifier', 'title', 'creator'].forEach(f => p.append('fl[]', f));
+  ['identifier', 'title', 'creator', 'licenseurl'].forEach(f => p.append('fl[]', f));
   const r = await fetch('https://archive.org/advancedsearch.php?' + p); if (!r.ok) throw new Error('archive.org');
-  const docs = (((await r.json()).response) || {}).docs || [];
+  const allDocs = (((await r.json()).response) || {}).docs || [];
+  // if the search reports licences, skip items with no clear licence before fetching their files (if it doesn't, check every item as before)
+  const docs = allDocs.some(d => d.licenseurl !== undefined) ? allDocs.filter(d => iaLicense([].concat(d.licenseurl || '')[0])) : allDocs;
   const metas = await Promise.allSettled(docs.map(d => fetch('https://archive.org/metadata/' + encodeURIComponent(d.identifier)).then(x => x.json())));
   const out = [];
   metas.forEach((m, i) => {
@@ -1446,17 +1571,31 @@ async function iaTracks(q, items = 8){
     const id = docs[i].identifier, who = [].concat(md.creator || docs[i].creator || 'Unknown artist')[0];
     m.value.files.filter(f => /mp3/i.test(f.format || '') && f.source !== 'metadata').slice(0, 8).forEach((f, k) => out.push({
       id: `ia-${id}-${k}`, title: f.title || f.name.split('/').pop().replace(/\.[^.]+$/, '').replace(/_/g, ' '), artist: `${who} \u00B7 ${lic}`,
-      art: `https://archive.org/services/img/${encodeURIComponent(id)}`, audio: `https://archive.org/download/${encodeURIComponent(id)}/${f.name.split('/').map(encodeURIComponent).join('/')}`, duration: iaSecs(f.length) }));
+      art: `https://archive.org/services/img/${encodeURIComponent(id)}`, audio: `https://archive.org/download/${encodeURIComponent(id)}/${f.name.split('/').map(encodeURIComponent).join('/')}`, duration: iaSecs(f.length),
+      src: 'ia', lic, licUrl: safeUrl(md.licenseurl), link: 'https://archive.org/details/' + encodeURIComponent(id) }));
   });
   IA_CACHE.set(key, out); return out;
+}
+async function loadJamParams(sec, rail, key, params){   // one Jamendo query -> one rail (hidden when empty)
+  try { const list = dedupeTracks(jamTracks(await jamendo('tracks', params))).slice(0, 24); $(sec).style.display = list.length ? '' : 'none'; if (list.length) renderRail(rail, key, list); } catch (e) {}
+}
+async function loadAudiusDesi(){   // whatever Audius artists have uploaded under these words; hidden unless there are at least 4 playable songs
+  try {
+    const rs = await Promise.allSettled(['punjabi', 'bhangra', 'hindi'].map(q => audiusFetch('/tracks/search', { query: q, limit: 12 })));
+    const list = dedupeTracks(rs.flatMap(r => r.status === 'fulfilled' ? r.value : [])).slice(0, 24);
+    $('audDesi').style.display = list.length >= 4 ? '' : 'none'; if (list.length >= 4) renderRail('railAudDesi', 'aud-desi', list);
+  } catch (e) {}
 }
 async function loadIaRow(){
   try { const list = (await iaTracks('punjabi OR bhangra', 8)).slice(0, 24); $('iaPunjabi').style.display = list.length ? '' : 'none'; if (list.length) renderRail('railIaPunjabi', 'ia-pj', list); } catch (e) {}
 }
-async function loadJamRow(sec, rail, key, term){   // songs tagged or named with a word, from Jamendo's free catalogue
+async function loadJamRow(sec, rail, key, term, lang){   // songs tagged or named with a word, from Jamendo's free catalogue (lang = 2-letter lyrics language, e.g. 'pa', 'hi')
   try {
-    const rs = await Promise.allSettled([jamendo('tracks', { tags: term, limit: 24, order: 'popularity_month' }), jamendo('tracks', { search: term, limit: 24 })]);
-    const seen = new Set(), list = rs.flatMap(r => r.status === 'fulfilled' ? jamTracks(r.value) : []).filter(t => !seen.has(t.id) && seen.add(t.id)).slice(0, 24);
+    const first = [jamendo('tracks', { tags: term, limit: 24, order: 'popularity_month' })];
+    if (lang) first.push(jamendo('tracks', { lang, limit: 24, order: 'popularity_month' }));   // artists who marked their lyrics language, even without the tag
+    const rs = await Promise.allSettled(first);
+    if (rs.reduce((n, r) => n + (r.status === 'fulfilled' ? jamTracks(r.value).length : 0), 0) < 12) rs.push(...await Promise.allSettled([jamendo('tracks', { search: term, limit: 24 })]));   // still thin, so widen it
+    const seen = new Set(), list = dedupeTracks(rs.flatMap(r => r.status === 'fulfilled' ? jamTracks(r.value) : []).filter(t => !seen.has(t.id) && seen.add(t.id))).slice(0, 24);
     $(sec).style.display = list.length ? '' : 'none'; if (list.length) renderRail(rail, key, list);
   } catch (e) {}
 }
@@ -1500,6 +1639,8 @@ function updateAvatar(){ const a = $('hdrAvatar'); if (a) a.textContent = initia
 function goView(v){
   updateAvatar();
   if (v !== view) {
+    const dir = v === 'detail' ? 'fwd' : view === 'detail' ? 'back' : ((NAV_INDEX[v] == null ? 9 : NAV_INDEX[v]) >= (NAV_INDEX[view] == null ? 9 : NAV_INDEX[view]) ? 'fwd' : 'back');
+    $('viewport').dataset.dir = dir;
     prevView = view; view = v;
     document.querySelectorAll('.view').forEach(el => el.classList.toggle('active', el.id === 'view-' + v));
     $('viewport').scrollTo({ top: 0, behavior: 'auto' });
@@ -1568,7 +1709,8 @@ async function loadHome(){
   }
   if (CUSTOM_TRACKS.length) { $('customSection').style.display = ''; renderRail('railCustom', 'custom', CUSTOM_TRACKS); }
   loadCommunity();
-  loadJamRow('jmPunjabi', 'railJmPunjabi', 'jm-pj', 'punjabi'); loadJamRow('jmBhangra', 'railJmBhangra', 'jm-bh', 'bhangra'); loadJamRow('jmHindi', 'railJmHindi', 'jm-hi', 'hindi'); loadIaRow();
+  loadJamRow('jmPunjabi', 'railJmPunjabi', 'jm-pj', 'punjabi', 'pa'); loadJamRow('jmBhangra', 'railJmBhangra', 'jm-bh', 'bhangra'); loadJamRow('jmHindi', 'railJmHindi', 'jm-hi', 'hindi', 'hi'); loadIaRow();
+  loadAudiusDesi(); loadJamParams('jmInstr', 'railJmInstr', 'jm-in', { vocalinstrumental: 'instrumental', order: 'popularity_month', limit: 24 });
   renderQuick();
   const b = timeBucket(); $('timeTitle').textContent = b.label;
   ['railTrending', 'railTime', 'railFresh', 'railAudius'].forEach(id => $(id).innerHTML = skRail());
@@ -1623,6 +1765,19 @@ function onQuery(v){
   if (!v.trim()) { searchToken++; renderSearchHome(); return; }
   searchTimer = setTimeout(() => runSearch(v.trim()), 450);
 }
+/* Hide obvious duplicates: same title and same artist (and, when both lengths are known, nearly the same length).
+   Remixes, live versions and radio edits keep their own title or length, so they are NOT treated as duplicates.
+   The first copy in the list wins; `against` = songs already shown elsewhere that later copies should be hidden behind. */
+const dupNorm = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}\p{M}]+/gu, ' ').trim();
+const dupKey = t => { const ti = dupNorm(t.title), ar = dupNorm(String(t.artist || '').split('\u00B7')[0]); return ti && ar ? ti + '|' + ar : ''; };
+const dupLen = t => (t.src === 'apple' ? 0 : t.duration || 0);   // an Apple preview is always 30 s, so its length says nothing
+function dedupeTracks(list, against){
+  const kept = new Map();
+  const add = t => { const k = dupKey(t); if (k) { if (!kept.has(k)) kept.set(k, []); kept.get(k).push(dupLen(t)); } };
+  const isDup = t => { const k = dupKey(t); if (!k || !kept.has(k)) return false; const d = dupLen(t); return kept.get(k).some(x => !x || !d || Math.abs(x - d) <= 8); };
+  (against || []).forEach(add);
+  return list.filter(t => { if (isDup(t)) return false; add(t); return true; });
+}
 const interleave = (a, b) => { const out = []; for (let i = 0; i < Math.max(a.length, b.length); i++) { if (a[i]) out.push(a[i]); if (b[i]) out.push(b[i]); } return out; };
 async function runSearch(q){
   const token = ++searchToken;
@@ -1641,9 +1796,9 @@ async function runSearch(q){
   const seen = new Set();
   const jam = [...(j1.status === 'fulfilled' ? jamTracks(j1.value) : []), ...(j2.status === 'fulfilled' ? jamTracks(j2.value) : [])]
     .filter(t => !seen.has(t.id) && seen.add(t.id));
-  const songs = [...custom, ...interleave(jam, a.status === 'fulfilled' ? a.value : [])];
+  const songs = dedupeTracks([...custom, ...interleave(jam, a.status === 'fulfilled' ? a.value : [])]);
   const vids = y.status === 'fulfilled' ? y.value : [];
-  const free = ia.status === 'fulfilled' ? ia.value.slice(0, 20) : [], spl = spr.status === 'fulfilled' ? spr.value : [];
+  const free = ia.status === 'fulfilled' ? dedupeTracks(ia.value.slice(0, 20), songs) : [], spl = spr.status === 'fulfilled' ? spr.value : [];
   let html = '';
   if (spl.length) html += `<div class="section-head"><h2 class="h2">On Spotify</h2><span class="sub">Plays in your Spotify app &middot; Premium</span></div><div id="spRows"></div>`;
   if (songs.length) {
@@ -1651,7 +1806,7 @@ async function runSearch(q){
   }
   html += '<div id="prevBox"></div>';
   if (free.length) {
-    html += `<div class="section-head" style="margin-top:26px"><h2 class="h2">Free &amp; open music</h2><span class="sub">Creative Commons or public domain, from the Internet Archive</span></div><div id="freeRows"></div>`;
+    html += `<div class="section-head" style="margin-top:26px"><h2 class="h2">Free &amp; open music</h2><span class="sub">From the Internet Archive &middot; licence declared by the uploader, not verified by Cadence</span></div><div id="freeRows"></div>`;
   }
   if (vids.length) {
     html += `<div class="yt"><div class="section-head"><h2 class="h2">On YouTube</h2><span class="sub">Plays with YouTube's own ads and stops when the screen locks</span></div>${vids.map(v => `
@@ -1666,7 +1821,8 @@ async function runSearch(q){
   if (songs.length) renderRows($('searchRows'), 'search', songs);
   if (prev.length) renderRows($('prevRows'), 'search-prev', prev);
   if (free.length) renderRows($('freeRows'), 'search-free', free);
-  if (q.length > 2) itunesTracks(q).then(prev => {   // arrives after the rest, so a slow Apple never delays the results
+  if (q.length > 2) itunesTracks(q).then(prevAll => {   // arrives after the rest, so a slow Apple never delays the results
+    const prev = dedupeTracks(prevAll, songs.concat(free));   // a preview of a song we can already play in full is just noise
     if (token !== searchToken || !prev.length || !$('prevBox')) return;
     $('prevBox').innerHTML = `<div class="section-head" style="margin-top:26px"><h2 class="h2">Previews from Apple Music</h2><span class="sub">30 seconds each. Play one, then tap "open the full song".</span></div><div id="prevRows"></div>`;
     renderRows($('prevRows'), 'search-prev', prev);
@@ -1832,10 +1988,10 @@ async function openArtist(name){
     audiusFetch('/tracks/search', { query: name, limit: 20 })
   ]);
   const key = name.toLowerCase();
-  const tracks = [
+  const tracks = dedupeTracks([
     ...(j.status === 'fulfilled' ? jamTracks(j.value) : []),
     ...(a.status === 'fulfilled' ? a.value.filter(t => t.artist.toLowerCase().includes(key) || key.includes(t.artist.toLowerCase())) : [])
-  ];
+  ]);
   if (!tracks.length) { setQuery(name); return; } // nothing exact: fall back to a normal search
   openDetail({ kind: 'Artist', title: name, sub: `${tracks.length} song${tracks.length === 1 ? '' : 's'}`, key: 'artist', tracks }, true);
 }
@@ -1964,7 +2120,14 @@ const MOOD_MAP = {
   morning:['acoustic','folk'], coffee:['acoustic','folk'], sunday:['folk','acoustic'],
   rock:['rock'], guitar:['rock','acoustic'], metal:['metal'], jazz:['jazz'], blues:['blues'], soul:['funk','blues'], funk:['funk'],
   classical:['classical'], piano:['classical','piano'], instrumental:['instrumental'], hiphop:['hiphop'], rap:['hiphop'], reggae:['reggae'], folk:['folk'], indie:['indie','rock'],
-  electronic:['electronic'], ambient:['ambient'], acoustic:['acoustic'], summer:['pop','reggae'], winter:['ambient','classical'], gaming:['electronic','ambient'], cooking:['jazz','lounge'], yoga:['ambient','acoustic']
+  electronic:['electronic'], ambient:['ambient'], acoustic:['acoustic'], summer:['pop','reggae'], winter:['ambient','classical'], gaming:['electronic','ambient'], cooking:['jazz','lounge'], yoga:['ambient','acoustic'],
+  // Hindi / Punjabi words written in English letters
+  udaas:['piano','blues'], gham:['piano','blues'], dard:['piano','blues'], judai:['piano','blues'], bewafa:['piano','blues'], yaad:['acoustic','folk'], yaadein:['acoustic','folk'],
+  ishq:['acoustic','pop'], pyar:['acoustic','pop'], pyaar:['acoustic','pop'], mohabbat:['acoustic','pop'], mehboob:['acoustic','pop'],
+  masti:['dance','pop'], dhamaal:['dance','pop'], naach:['dance','pop'], nachle:['dance','pop'], josh:['dance','electronic'], junoon:['electronic','dance'],
+  sukoon:['ambient','acoustic'], shaant:['ambient','acoustic'], shanti:['ambient','acoustic'], chain:['ambient','chillout'], raat:['ambient','chillout'], barish:['chillout','acoustic'], baarish:['chillout','acoustic'], subah:['acoustic','folk'], safar:['world','indie'],
+  punjabi:['punjabi'], bhangra:['bhangra'], dhol:['bhangra','world'], hindi:['hindi'], bollywood:['hindi','world'], desi:['punjabi','world'], pind:['punjabi','folk'],
+  sufi:['world','folk'], ghazal:['world','acoustic'], qawwali:['world'], raga:['world','classical'], indian:['world'], tabla:['world'], sitar:['world','classical']
 };
 const MOOD_IDEAS = ['Focus', 'Workout', 'Rainy day', 'Late night', 'Road trip', 'Party'];
 const MOOD_LANGS = [['', 'Any language'], ['en', 'English'], ['hi', 'Hindi'], ['pa', 'Punjabi'], ['ru', 'Russian'], ['es', 'Spanish']];
@@ -2165,6 +2328,7 @@ function onTrackChange(){
   ['pArt', 'mArt', 'fpArt'].forEach(id => { const el = $(id); el.onerror = () => imgFail(el); el.src = art(t); });
   ['pTitle', 'mTitle', 'fpTitle'].forEach(id => $(id).textContent = t.title);
   ['pArtist', 'mArtist', 'fpArtist'].forEach(id => $(id).textContent = t.artist);
+  ['pSrc', 'fpSrc'].forEach(id => $(id).innerHTML = creditHTML(t));
   document.title = `${t.title} · Cadence`;
   setBgArt(t.art);
   $('reportBtn').style.display = t.dbId ? '' : 'none';
