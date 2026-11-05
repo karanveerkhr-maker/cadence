@@ -758,6 +758,12 @@ html{-webkit-tap-highlight-color:transparent;}
 .rip{position:absolute;border-radius:50%;pointer-events:none;background:currentColor;opacity:0;transform:scale(0);animation:rip 560ms var(--ease) forwards;}
 .card-art-wrap .rip{background:#fff;}
 @keyframes rip{from{transform:scale(0);opacity:.22;}to{transform:scale(1);opacity:0;}}
+/* queue */
+.q-label{display:flex;align-items:center;justify-content:space-between;margin:16px 2px 6px;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);}
+.q-label:first-child{margin-top:2px;}
+.q-clear{border:0;background:none;color:var(--text-dim);font:inherit;font-size:12px;text-transform:none;letter-spacing:0;cursor:pointer;text-decoration:underline;padding:4px 6px;}
+.q-actions{display:flex;gap:8px;margin:2px 0 12px;}
+.q-actions .btn{flex:1;justify-content:center;}
 </style>
 </head>
 <body>
@@ -939,6 +945,7 @@ html{-webkit-tap-highlight-color:transparent;}
     <div class="p-center">
       <div class="p-btns">
         <button class="ctrl" data-role="shuffle" onclick="toggleShuffle()" aria-label="Shuffle"><svg class="ic"><use href="#i-shuffle"/></svg></button>
+        <button class="ctrl" data-role="vibe" onclick="toggleVibe()" aria-label="Vibe shuffle: keep the mood of what is playing" title="Vibe shuffle: keeps the mood of what is playing"><svg class="ic"><use href="#i-sparkles"/></svg></button>
         <button class="ctrl" onclick="prev()" aria-label="Previous"><svg class="ic"><use href="#i-prev"/></svg></button>
         <button class="play-circle" data-role="play" onclick="togglePlay()" aria-label="Play"><svg class="ic"><use href="#i-play"/></svg></button>
         <button class="ctrl" onclick="next()" aria-label="Next"><svg class="ic"><use href="#i-next"/></svg></button>
@@ -1029,6 +1036,7 @@ html{-webkit-tap-highlight-color:transparent;}
     </div>
     <div class="fp-controls">
       <button class="ctrl" data-role="shuffle" onclick="toggleShuffle()" aria-label="Shuffle"><svg class="ic"><use href="#i-shuffle"/></svg></button>
+        <button class="ctrl" data-role="vibe" onclick="toggleVibe()" aria-label="Vibe shuffle: keep the mood of what is playing" title="Vibe shuffle: keeps the mood of what is playing"><svg class="ic"><use href="#i-sparkles"/></svg></button>
       <button class="ctrl" onclick="prev()" aria-label="Previous"><svg class="ic lg"><use href="#i-prev"/></svg></button>
       <button class="fp-play" data-role="play" onclick="togglePlay()" aria-label="Play"><svg class="ic xl"><use href="#i-play"/></svg></button>
       <button class="ctrl" onclick="next()" aria-label="Next"><svg class="ic lg"><use href="#i-next"/></svg></button>
@@ -1062,8 +1070,9 @@ html{-webkit-tap-highlight-color:transparent;}
 <!-- Add to playlist -->
 <div class="overlay" id="addModal" onclick="if(event.target===this)closeModal('addModal')">
   <div class="modal">
-    <h3>Add to playlist</h3>
+    <h3>Add song</h3>
     <p id="addTrackName"></p>
+    <div class="q-actions"><button class="btn ghost sm" data-act="qnext">Play next</button><button class="btn ghost sm" data-act="qend">Add to queue</button></div>
     <div class="pl-pick" id="addList"></div>
     <input class="field" id="addNewName" placeholder="Or create a new playlist" autocomplete="off" onkeydown="if(event.key==='Enter')addToNewPl()">
     <button class="btn" onclick="addToNewPl()">Create and add</button>
@@ -1129,7 +1138,8 @@ function srcOf(t){   // new tracks carry t.src; older saved ones are recognised 
 }
 const safeUrl = u => /^https?:\/\//i.test(String(u || '')) ? String(u) : '';
 const badgeHTML = t => { const s = srcOf(t); return s ? `<span class="src-badge">${esc(SRC_SHORT[s] || SRC_LABEL[s])}</span>` : ''; };
-function creditHTML(t){   // one line under the title: source, licence and a link back to the song's own page
+function creditHTML(t){ return creditCore(t) + (vibe ? vibeBadge(t) : ''); }
+function creditCore(t){   // one line under the title: source, licence and a link back to the song's own page
   const s = srcOf(t); if (!s) return '';
   const a = (u, txt) => { u = safeUrl(u); return u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(txt)}</a>` : esc(txt); };
   const b = `<span class="src-badge">${esc(SRC_LABEL[s])}</span>`;
@@ -1179,11 +1189,17 @@ function cachedJSON(url, ttl = 300000){
   return p;
 }
 async function jamendo(path, params){
-  const base = path === 'tracks' ? { type: 'single albumtrack' } : {};   // Jamendo returns only album tracks unless singles are asked for too
+  const base = path === 'tracks' ? { type: 'single albumtrack', include: 'musicinfo' } : {};   // musicinfo = the tags and tempo the artist gave the song (used by Vibe shuffle)   // Jamendo returns only album tracks unless singles are asked for too
   const qs = new URLSearchParams({ client_id: JAMENDO_CLIENT_ID, format: 'json', ...base, ...params });
   return cachedJSON(`https://api.jamendo.com/v3.0/${path}/?${qs}`);
 }
-const toTrackJ = r => ({ id: String(r.id), title: r.name, artist: r.artist_name, art: r.album_image || r.image || '', audio: r.audio, duration: r.duration || 0,
+function jamVT(r){   // the artist's own tags + tempo for a Jamendo song, kept small
+  const m = r && r.musicinfo; if (!m || typeof m !== 'object') return {};
+  const tg = m.tags || {}, vt = [].concat(tg.genres || [], tg.vartags || [], tg.instruments || []).map(String).slice(0, 14);
+  const sp = ['verylow', 'low', 'medium', 'high', 'veryhigh'].indexOf(String(m.speed || '').toLowerCase());
+  return { vt, vs: sp < 0 ? undefined : sp, vl: m.lang ? String(m.lang).toLowerCase().slice(0, 3) : '' };
+}
+const toTrackJ = r => ({ id: String(r.id), title: r.name, artist: r.artist_name, art: r.album_image || r.image || '', audio: r.audio, duration: r.duration || 0, ...jamVT(r),
   src: 'jamendo', lic: iaLicense(r.license_ccurl), licUrl: safeUrl(r.license_ccurl), link: safeUrl(r.shareurl) });
 const jamTracks = r => ((r && r.results) || []).filter(x => x.audio).map(toTrackJ);
 
@@ -1204,7 +1220,8 @@ const toTrackA = r => ({
   id: 'audius-' + r.id, title: r.title, artist: (r.user && r.user.name) || 'Unknown artist',
   art: r.artwork ? (r.artwork['480x480'] || r.artwork['150x150'] || r.artwork['1000x1000'] || '') : '',
   audio: `${AUDIUS_BASE}/tracks/${encodeURIComponent(r.id)}/stream?app_name=${encodeURIComponent(AUDIUS_APP)}`, duration: r.duration || 0,
-  src: 'audius', lic: String(r.license || '').trim().slice(0, 60),
+  vt: [r.genre, r.mood].concat(String(r.tags || '').split(',')).map(x => String(x || '').trim()).filter(Boolean).slice(0, 14),
+  src: 'audius', audioAlt: (r.stream && safeUrl(r.stream.url)) || '', lic: String(r.license || '').trim().slice(0, 60),
   link: r.permalink && String(r.permalink).startsWith('/') ? 'https://audius.co' + r.permalink : safeUrl(r.permalink)
 });
 async function audiusFetch(path, params){
@@ -1250,8 +1267,9 @@ function rowHTML(t, i, key, o){
       ${o.reason ? `<div class="row-reason">${esc(o.reason)}</div>` : ''}</div>
     <div class="row-dur">${t.duration ? fmt(t.duration) : ''}</div>
     ${o.remove ? `<button class="row-btn" data-act="rmpl" data-pl="${esc(o.remove)}" data-id="${id}" aria-label="Remove">${ic('close', 'sm')}</button>`
+               : o.q ? `${o.q === 'up' ? `<button class="row-btn" data-act="qtop" data-i="${i}" aria-label="Play next">${ic('queue', 'sm')}</button>` : ''}<button class="row-btn" data-act="qrm" data-i="${i}" aria-label="Remove from queue">${ic('close', 'sm')}</button>`
                : `<button class="row-btn" data-act="add" data-id="${id}" aria-label="Add to playlist">${ic('plus', 'sm')}</button>`}
-    <button class="row-btn like ${liked ? 'on' : ''}" data-act="like" data-id="${id}" aria-label="Like">${ic(liked ? 'heart-fill' : 'heart', 'sm')}</button>
+    ${o.q ? '' : `<button class="row-btn like ${liked ? 'on' : ''}" data-act="like" data-id="${id}" aria-label="Like">${ic(liked ? 'heart-fill' : 'heart', 'sm')}</button>`}
   </div>`;
 }
 const skRail = n => Array.from({ length: n || 7 }, () => `<div class="card" style="animation:none"><div class="sk" style="aspect-ratio:1;margin-bottom:10px"></div><div class="sk" style="height:12px;width:78%;margin-bottom:6px"></div><div class="sk" style="height:10px;width:52%"></div></div>`).join('');
@@ -1887,7 +1905,7 @@ function toggleLike(id, btn){
   id = String(id);
   const t = findTrack(id); if (!t) return;
   if (likes[id]) { delete likes[id]; toast('Removed from Liked Songs'); }
-  else { likes[id] = t; toast('Saved to Liked Songs'); }
+  else { likes[id] = t; toast('Saved to Liked Songs'); tasteAdd(t, 2); }
   lsSet('cadence_liked', likes);
   syncLikes();
   if (btn) { btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
@@ -2089,6 +2107,8 @@ function settingsHTML(){
         <button class="btn danger sm" data-act="clear" data-clear="likes">Clear</button></div>
       <div class="setting-row"><div><b>Playlists</b><div class="sub">${pls.length} playlist${pls.length === 1 ? '' : 's'}</div></div>
         <button class="btn danger sm" data-act="clear" data-clear="playlists">Delete all</button></div>
+      <div class="setting-row"><div><b>Vibe taste profile</b><div class="sub">What Vibe shuffle has learned from what you finish, skip and like. Stays on this device.</div></div>
+        <button class="btn danger sm" data-act="clear" data-clear="taste">Reset</button></div>
     </div>
     ${legalHTML()}<div class="settings-group">
       <div class="settings-group-title">About</div>
@@ -2096,11 +2116,12 @@ function settingsHTML(){
     </div>`;
 }
 function clearData(kind){
-  const labels = { recent: 'recently played', likes: 'liked songs', playlists: 'all playlists' };
+  const labels = { recent: 'recently played', likes: 'liked songs', playlists: 'all playlists', taste: 'your Vibe taste profile' };
   if (!confirm(`Clear ${labels[kind]}? This can't be undone.`)) return;
   if (kind === 'recent') { recent = []; lsSet('cadence_recent', recent); }
   if (kind === 'likes') { likes = {}; lsSet('cadence_liked', likes); syncLikes(); }
   if (kind === 'playlists') { pls = []; savePls(); }
+  if (kind === 'taste') { taste = { m: {}, t: {}, n: 0 }; lsSet('cadence_taste', taste); }
   toast(`Cleared ${labels[kind]}`);
   renderProfileView();
 }
@@ -2181,6 +2202,199 @@ let xfadeSec = lsGet('cadence_xfade', 3); // 0 = off
 let xf = { on: false, timer: null, out: null, pre: null }; // pre = { idx, el } preloaded next song
 const canFade = (() => { try { const v = deckA.volume; deckA.volume = .5; const ok = deckA.volume === .5; deckA.volume = v; return ok; } catch (e) { return false; } })();
 let cur = null, queue = [], qi = -1, curKey = '', playing = false, shuffle = false, repeat = 0, dragging = false, errStreak = 0;
+let shufBackup = null;   // the not-yet-played songs in their original order, so turning shuffle off can put them back
+
+/* ---------- Shuffle: one real play order, no repeats, no same artist back to back ---------- */
+const shufKey = t => { const a = String((t && t.artist) || '').split('\u00B7')[0].trim().toLowerCase(); return a || ('#' + (t && t.id)); };
+function smartOrder(list, prevTrack){
+  const pool = list.slice();
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }   // fair shuffle first
+  const groups = new Map();
+  pool.forEach(t => { const k = shufKey(t); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); });
+  const out = []; let last = prevTrack ? shufKey(prevTrack) : '', last2 = '';
+  for (let left = pool.length; left > 0; left--) {
+    const live = [...groups.entries()].filter(([, g]) => g.length), rem = left - 1;
+    // a pick is "safe" if the songs still left can all be placed without any artist twice in a row afterwards
+    const safe = ([k]) => live.every(([a, g]) => (g.length - (a === k ? 1 : 0)) <= (a === k ? Math.floor(rem / 2) : Math.ceil(rem / 2)));
+    let c = live.filter(([k]) => k !== last && safe([k]));            // not the last artist, and keeps a clean order possible...
+    if (!c.length) c = live.filter(([k]) => k !== last);              // ...or at least not the last artist...
+    if (!c.length) c = live;                                           // ...unless nothing else is left
+    const far = c.filter(([k]) => k !== last2); if (far.length) c = far;   // also avoid the artist before that when there is a choice
+    const w = x => x[1].length * x[1].length;   // artists with more songs left are favoured (squared), so they spread out instead of clumping at the end
+    const total = c.reduce((n, x) => n + w(x), 0); let r = Math.random() * total, pick = c[0];
+    for (const x of c) { r -= w(x); if (r <= 0) { pick = x; break; } }
+    out.push(pick[1].pop()); last2 = last; last = pick[0];
+  }
+  return out;
+}
+function buildQueue(list, i){
+  if (!shuffle) { queue = list.slice(); qi = i; shufBackup = null; return; }
+  const first = list[i];
+  shufBackup = list.slice(i + 1).concat(list.slice(0, i));
+  queue = [first, ...smartOrder(list.filter((_, k) => k !== i), first)]; qi = 0;
+}
+function tailReshuffle(){   // shuffle + repeat all: as the last song starts, line up a fresh shuffled round
+  if (!shuffle || repeat !== 1 || queue.length < 3 || qi !== queue.length - 1) return;
+  const last = queue[qi]; queue = [...smartOrder(queue.slice(0, qi), last), last]; xf.pre = null;
+}
+
+/* ======================================================================
+   VIBE SHUFFLE - keeps the queue in the mood of what you are hearing,
+   and slowly learns what you finish, skip and like (kept on this device only).
+   It works from the tags and tempo artists give their songs plus words in the title,
+   so it is a good guess, not audio analysis.
+   ====================================================================== */
+const VMOODS = ['sad', 'calm', 'happy', 'energetic', 'romantic'];
+const MOOD_LABEL = { sad: 'Sad', calm: 'Calm', happy: 'Happy', energetic: 'Energetic', romantic: 'Romantic' };
+const VT = {   // tag -> mood: strong tags count fully, soft ones (genres that only lean that way) count a little
+  sad:       { strong: ['sad', 'melancholic', 'melancholy', 'emotional', 'sentimental', 'lonely', 'heartbreak', 'heartbroken', 'sorrow', 'grief', 'depressing', 'tearjerker'], soft: ['blues', 'piano', 'slow', 'dark', 'nostalgic', 'cinematic', 'ballad'] },
+  calm:      { strong: ['calm', 'relaxing', 'relax', 'chillout', 'chill', 'peaceful', 'meditation', 'sleep', 'soothing', 'lounge', 'downtempo', 'ambient', 'soft', 'dreamy'], soft: ['acoustic', 'instrumental', 'newage', 'nature', 'classical', 'lofi', 'jazz'] },
+  happy:     { strong: ['happy', 'upbeat', 'cheerful', 'joyful', 'fun', 'sunny', 'positive', 'feelgood', 'uplifting', 'playful', 'summer'], soft: ['pop', 'funk', 'reggae', 'ska'] },
+  energetic: { strong: ['energetic', 'powerful', 'aggressive', 'party', 'workout', 'dance', 'club', 'hype', 'epic', 'intense', 'driving'], soft: ['electronic', 'house', 'edm', 'techno', 'rock', 'metal', 'hiphop', 'rap', 'trap', 'dubstep', 'bhangra', 'punk'] },
+  romantic:  { strong: ['romantic', 'love', 'sensual', 'passion', 'intimate'], soft: ['rnb', 'soul', 'ballad', 'acoustic'] }
+};
+const WORDS = {   // words in a title or artist name (English and Hindi/Punjabi in English letters)
+  sad:       ['sad', 'cry', 'crying', 'tears', 'alone', 'lonely', 'broken', 'heartbreak', 'miss', 'missing', 'goodbye', 'pain', 'hurt', 'udaas', 'dard', 'gham', 'judai', 'bewafa', 'tanhai', 'yaad', 'yaadein', 'rona', 'aansu'],
+  calm:      ['calm', 'peace', 'peaceful', 'relax', 'sleep', 'dream', 'rain', 'night', 'moon', 'sukoon', 'shaant', 'raat', 'barish', 'baarish', 'lullaby'],
+  happy:     ['happy', 'smile', 'sunshine', 'joy', 'summer', 'masti', 'khushi', 'fun'],
+  energetic: ['party', 'dance', 'beat', 'fire', 'power', 'rush', 'josh', 'junoon', 'naach', 'nachle', 'dhol', 'bhangra', 'jatt', 'club', 'drop'],
+  romantic:  ['love', 'heart', 'kiss', 'ishq', 'pyar', 'pyaar', 'mohabbat', 'dil', 'sajna', 'mehboob']
+};
+const MOOD_FETCH = { sad: ['sad', 'melancholic', 'piano'], calm: ['relaxing', 'ambient', 'chillout'], happy: ['happy', 'upbeat', 'pop'], energetic: ['energetic', 'dance', 'electronic'], romantic: ['romantic', 'love', 'acoustic'] };
+const normTag = x => String(x || '').toLowerCase().replace(/&/g, 'n').replace(/[^a-z]/g, '');
+let vibe = lsGet('cadence_vibe', false) === true; if (vibe) shuffle = true;
+let taste = lsGet('cadence_taste', null); if (!taste || typeof taste !== 'object') taste = { m: {}, t: {}, n: 0 };
+let vLast = null, lPos = 0, lDur = 0;
+const VV = new Map(), VIBE_EXTRA = [], VIBE_FETCHED = new Map(), VSKIP = new Set();   // VSKIP = songs you skipped early, so the vibe stops following them
+
+function vibeVec(t){   // what we can tell about one song: a mood profile, its tags, tempo and language
+  const key = String(t.id); if (VV.has(key)) return VV.get(key);
+  const v = { sad: 0, calm: 0, happy: 0, energetic: 0, romantic: 0 }, tags = new Set((t.vt || []).map(normTag).filter(Boolean));
+  let known = false;
+  tags.forEach(g => VMOODS.forEach(m => { if (VT[m].strong.includes(g)) { v[m] += 1; known = true; } else if (VT[m].soft.includes(g)) { v[m] += .35; known = true; } }));
+  const words = (String(t.title || '') + ' ' + String(t.artist || '').split('\u00B7')[0]).toLowerCase().match(/[a-z]+/g) || [];
+  words.forEach(w => VMOODS.forEach(m => { if (WORDS[m].includes(w)) { v[m] += .6; known = true; } }));
+  const sp = typeof t.vs === 'number' ? t.vs : null;
+  if (sp !== null) { if (sp <= 1) { v.calm += .3; v.sad += .2; known = true; } else if (sp >= 3) { v.energetic += .3; v.happy += .2; known = true; } }
+  const mag = Math.sqrt(VMOODS.reduce((n, m) => n + v[m] * v[m], 0)) || 1; VMOODS.forEach(m => { v[m] /= mag; });
+  const main = VMOODS.reduce((b, m) => v[m] > v[b] ? m : b, 'sad');
+  const out = { v, tags, known, speed: sp, lang: t.vl || '', main: known && v[main] >= .35 ? main : '' };
+  VV.set(key, out); if (VV.size > 1500) VV.delete(VV.keys().next().value);
+  return out;
+}
+function vibeDislike(t){   // 0..1: how much this song's mood is something you keep skipping
+  const x = vibeVec(t); if (!x.known) return 0;
+  return Math.min(1, VMOODS.reduce((n, m) => n + x.v[m] * Math.min(1, Math.max(0, -(taste.m[m] || 0)) / 3), 0));
+}
+function vibeSim(A, B){   // how well two songs go together, 0..1
+  if (!A.known || !B.known) return .12;
+  const dot = VMOODS.reduce((n, m) => n + A.v[m] * B.v[m], 0);
+  let inter = 0; A.tags.forEach(x => { if (B.tags.has(x)) inter++; });
+  const jac = inter / Math.max(1, A.tags.size + B.tags.size - inter);
+  const sp = A.speed !== null && B.speed !== null ? 1 - Math.abs(A.speed - B.speed) / 4 : .5;
+  return .62 * dot + .22 * jac + .1 * sp + (A.lang && A.lang === B.lang ? .06 : 0);
+}
+function vibeBlend(parts){   // weighted mix of song profiles -> one profile
+  const v = { sad: 0, calm: 0, happy: 0, energetic: 0, romantic: 0 }, tags = new Set(); let w = 0, sp = 0, spw = 0, known = false; const lang = {};
+  parts.forEach(([x, wt]) => { if (!x || !x.known || wt <= 0) return; known = true; w += wt; VMOODS.forEach(m => { v[m] += x.v[m] * wt; }); x.tags.forEach(g => tags.add(g)); if (x.speed !== null) { sp += x.speed * wt; spw += wt; } if (x.lang) lang[x.lang] = (lang[x.lang] || 0) + wt; });
+  if (!known) return { v, tags, known: false, speed: null, lang: '', main: '' };
+  const mag = Math.sqrt(VMOODS.reduce((n, m) => n + v[m] * v[m], 0)) || 1; VMOODS.forEach(m => { v[m] /= mag; });
+  const main = VMOODS.reduce((b, m) => v[m] > v[b] ? m : b, 'sad'), lg = Object.keys(lang).sort((a, b) => lang[b] - lang[a])[0] || '';
+  return { v, tags, known: true, speed: spw ? sp / spw : null, lang: lg, main: v[main] >= .35 ? main : '' };
+}
+function tasteVec(){   // what you tend to enjoy, from the songs you finished and liked
+  const v = { sad: 0, calm: 0, happy: 0, energetic: 0, romantic: 0 };
+  VMOODS.forEach(m => { v[m] = Math.max(0, taste.m[m] || 0); });
+  const mag = Math.sqrt(VMOODS.reduce((n, m) => n + v[m] * v[m], 0));
+  if (mag < .5) return null;
+  VMOODS.forEach(m => { v[m] /= mag; });
+  const tags = new Set(Object.keys(taste.t).filter(g => taste.t[g] > .8).sort((a, b) => taste.t[b] - taste.t[a]).slice(0, 8));
+  return { v, tags, known: true, speed: null, lang: '', main: '' };
+}
+function vibeRef(){   // the vibe to continue: mostly the last few songs, a little of your long-term taste
+  const heard = [cur, ...recent.filter(r => !cur || String(r.id) !== String(cur.id))].slice(0, 4), wts = [.45, .25, .18, .12];
+  const parts = heard.map((t, i) => [t ? vibeVec(t) : null, wts[i] * (i > 0 && VSKIP.has(String(t.id)) ? .1 : 1)]), tv = tasteVec(); if (tv) parts.push([tv, .18]);
+  return vibeBlend(parts);
+}
+function tasteAdd(t, w){   // +1 finished, +2 liked, -1 skipped early
+  try {
+    const x = vibeVec(t); if (!x.known) return;
+    VMOODS.forEach(m => { taste.m[m] = Math.max(-3, (taste.m[m] || 0) * .97 + x.v[m] * w); });
+    Object.keys(taste.t).forEach(g => { taste.t[g] *= .97; });
+    x.tags.forEach(g => { taste.t[g] = Math.max(-3, (taste.t[g] || 0) + w * .5); });
+    const keys = Object.keys(taste.t); if (keys.length > 60) keys.sort((a, b) => Math.abs(taste.t[b]) - Math.abs(taste.t[a])).slice(50).forEach(g => delete taste.t[g]);
+    taste.n = (taste.n || 0) + 1; lsSet('cadence_taste', taste);
+  } catch (e) {}
+}
+function vibePool(){   // every song we know about that can play in full right now, minus what was just heard
+  const played = new Set(queue.slice(0, qi + 1).map(t => String(t.id))); recent.slice(0, 12).forEach(t => played.add(String(t.id))); if (cur) played.add(String(cur.id));
+  const raw = [].concat(...Object.values(LISTS).filter(Array.isArray), Object.values(likes), recent, VIBE_EXTRA);
+  const seen = new Set(), ok = [];
+  raw.forEach(t => { if (!t || !t.id || t.sp || t.src === 'apple' || !(t.audio || t.local)) return; const id = String(t.id); if (played.has(id) || seen.has(id)) return; seen.add(id); ok.push(t); });
+  return dedupeTracks(ok, cur ? [cur] : []);
+}
+function vibeRebuild(){
+  try {
+    if (!vibe || !cur || qi < 0 || !queue.length) return;
+    let r = vibeRef();
+    if (!r.known) return;   // nothing to go on yet (e.g. your own file with no tags): keep the normal shuffle order
+    const mine = queue.slice(qi + 1).filter(t => t._uq), pool = vibePool(), out = [], used = new Set();
+    let last = shufKey(mine.length ? mine[mine.length - 1] : cur), last2 = mine.length ? shufKey(cur) : '';
+    const good = pool.filter(t => vibeSim(r, vibeVec(t)) >= .35).length;
+    for (let n = 0; n < 15; n++) {
+      // mood fit decides; the same artist twice running is only discouraged (not banned), so a small pool never drags the mood off course
+      const c = pool.filter(t => !used.has(String(t.id))).map(t => { const k = shufKey(t); return { t, k, s: vibeSim(r, vibeVec(t)) * (1 - .15 * vibeDislike(t)) * (k === last ? .35 : k === last2 ? .7 : 1) }; });
+      if (!c.length) break;
+      c.sort((a, b) => b.s - a.s); const top = c.slice(0, 5), w = top.map(x => Math.pow(x.s + .05, 3)), tot = w.reduce((a, b) => a + b, 0);
+      let rnd = Math.random() * tot, pick = top[0]; for (let i = 0; i < top.length; i++) { rnd -= w[i]; if (rnd <= 0) { pick = top[i]; break; } }
+      out.push(pick.t); used.add(String(pick.t.id)); last2 = last; last = pick.k;
+      r = vibeBlend([[r, .6], [vibeVec(pick.t), .4]]);   // drift a little with each pick so it stays coherent without getting stuck on one shape
+    }
+    queue = [...queue.slice(0, qi + 1), ...mine, ...out]; xf.pre = null; refreshQueue(true);
+    if (good < 10) vibeFetch(vibeRef().main);   // not many matches around: go and find more songs in this mood
+  } catch (e) { console.warn('Vibe shuffle', e); }
+}
+async function vibeFetch(mood){
+  if (!mood || (VIBE_FETCHED.get(mood) || 0) > Date.now() - 600000) return;
+  VIBE_FETCHED.set(mood, Date.now());
+  try {
+    const lang = vibeRef().lang, calls = MOOD_FETCH[mood].map(tg => jamendo('tracks', { tags: tg, limit: 20, order: 'popularity_month' }));
+    if (lang === 'pa' || lang === 'hi') calls.push(jamendo('tracks', { lang, limit: 20, order: 'popularity_month' }));
+    const rs = await Promise.allSettled([...calls.map(c => c.then(jamTracks)), audiusFetch('/tracks/search', { query: mood === 'energetic' ? 'party' : mood, limit: 15 })]);
+    const have = new Set(VIBE_EXTRA.map(t => String(t.id))); let added = 0;
+    rs.forEach(x => { if (x.status === 'fulfilled') x.value.forEach(t => { if (!have.has(String(t.id))) { have.add(String(t.id)); VIBE_EXTRA.push(t); added++; } }); });
+    while (VIBE_EXTRA.length > 250) VIBE_EXTRA.shift();
+    if (added && vibe) vibeRebuild();
+  } catch (e) {}
+}
+function vibeCommit(t){   // called whenever a new song starts: learn from the last one, then line up what fits next
+  try {
+    const p = vLast;
+    if (p && p.t && String(p.t.id) !== String(t.id)) {
+      const dur = isFinite(lDur) && lDur > 0 ? lDur : (p.t.duration || 200);
+      const w = lPos < 12 ? -1 : (lPos / dur >= .6 || lPos >= 75) ? 1 : .3;
+      if (w < 0) { VSKIP.add(String(p.t.id)); if (VSKIP.size > 60) VSKIP.delete(VSKIP.keys().next().value); } else VSKIP.delete(String(p.t.id));
+      tasteAdd(p.t, w);
+    }
+    vLast = { t }; lPos = 0; lDur = 0;
+    if (vibe) vibeRebuild();
+  } catch (e) {}
+}
+function vibeBadge(t){ const m = vibeVec(t).main; return m ? ` <span class="src-badge">${MOOD_LABEL[m]}</span>` : ''; }
+function vibeNow(){ return vibeRef().main; }
+function toggleVibe(){
+  if (!vibe) {
+    vibe = true; lsSet('cadence_vibe', true);
+    if (!shuffle) { shuffle = true; shufBackup = queue.slice(qi + 1).filter(t => !t._uq); }   // remember the original order so turning Shuffle off can restore it
+    if (cur && qi >= 0) { vibeRebuild(); const m = vibeNow(); toast(m ? `Vibe shuffle on \u00B7 keeping it ${MOOD_LABEL[m].toLowerCase()}` : "Vibe shuffle on \u00B7 not enough info about this song yet, so it shuffles normally until it learns"); }
+    else toast('Vibe shuffle on \u00B7 start a song and the queue will follow its mood');
+  } else {
+    vibe = false; lsSet('cadence_vibe', false);
+    if (queue.length && qi >= 0) { const up = queue.slice(qi + 1), mine = up.filter(t => t._uq), rest = up.filter(t => !t._uq); queue = [...queue.slice(0, qi + 1), ...mine, ...smartOrder(rest, mine.length ? mine[mine.length - 1] : queue[qi])]; xf.pre = null; }
+    toast('Vibe shuffle off \u00B7 normal shuffle');
+  }
+  syncModes(); refreshQueue(); if (cur) onTrackChange();
+}
 
 function playFrom(key, i){
   const list = LISTS[key]; if (!list || !list[i]) return;
@@ -2188,18 +2402,23 @@ function playFrom(key, i){
   const same = cur && String(cur.id) === String(t.id);
   if (same && (curKey === key || key === 'queue')) { togglePlay(); return; }
   if (key === 'queue') { qi = i; load(t); return; }
-  queue = list.slice(); qi = i; curKey = key;
+  buildQueue(list, i); curKey = key;
   load(t);
 }
 function shuffleFrom(key){
   const list = LISTS[key]; if (!list || !list.length) return;
   shuffle = true; syncModes();
-  playFrom(key, Math.floor(Math.random() * list.length));
+  let i = Math.floor(Math.random() * list.length);
+  if (list.length > 1 && cur && String(list[i].id) === String(cur.id)) i = (i + 1) % list.length;   // don't "shuffle" into the song already playing
+  playFrom(key, i);
 }
 function commitTrack(t){
   cur = t; errStreak = 0;
-  recent = [t, ...recent.filter(r => String(r.id) !== String(t.id))].slice(0, 30);
+  const rt = t._uq ? (({ _uq, ...r }) => r)(t) : t;   // the "queued by you" mark is only for the queue screen
+  recent = [rt, ...recent.filter(r => String(r.id) !== String(t.id))].slice(0, 30);
   lsSet('cadence_recent', recent);
+  tailReshuffle();
+  vibeCommit(t);
   onTrackChange();
 }
 function load(t){
@@ -2216,7 +2435,6 @@ function load(t){
 /* ---------- Crossfade: the end of a song blends into the start of the next ---------- */
 function nextIndex(auto){
   if (!queue.length) return -1;
-  if (shuffle && queue.length > 1) { let n; do { n = Math.floor(Math.random() * queue.length); } while (n === qi); return n; }
   const n = qi + 1;
   if (n >= queue.length) return (auto && repeat === 0) ? -1 : 0;
   return n;
@@ -2289,12 +2507,29 @@ function prev(){
   if (!queue.length) return;
   if (cur && cur.sp && sp.on) { if (spPosNow() > 3) { spSeek(0); return; } }
   else if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+  if (qi <= 0 && repeat !== 1) { audio.currentTime = 0; return; }   // first song: just restart it
   qi = (qi - 1 + queue.length) % queue.length; load(queue[qi]);
 }
-function toggleShuffle(){ shuffle = !shuffle; syncModes(); toast(shuffle ? 'Shuffle on' : 'Shuffle off'); }
+function toggleShuffle(){
+  if (vibe && shuffle) { vibe = false; lsSet('cadence_vibe', false); }   // turning shuffle off also ends Vibe
+  shuffle = !shuffle;
+  if (queue.length && qi >= 0) {   // only the songs still to come change; what you already heard stays put
+    const played = queue.slice(0, qi + 1), upcoming = queue.slice(qi + 1);
+    const mine = upcoming.filter(t => t._uq), rest = upcoming.filter(t => !t._uq);
+    if (shuffle) { shufBackup = rest.slice(); queue = [...played, ...mine, ...smartOrder(rest, mine.length ? mine[mine.length - 1] : queue[qi])]; }
+    else {
+      const pos = new Map((shufBackup || []).map((t, k) => [String(t.id), k]));
+      const known = rest.filter(t => pos.has(String(t.id))).sort((a, b) => pos.get(String(a.id)) - pos.get(String(b.id))), extra = rest.filter(t => !pos.has(String(t.id)));
+      queue = [...played, ...mine, ...known, ...extra]; shufBackup = null;
+    }
+    xf.pre = null;   // anything preloaded was for the old order
+  }
+  syncModes(); refreshQueue(); toast(shuffle ? 'Shuffle on' : 'Shuffle off');
+}
 function toggleRepeat(){ repeat = (repeat + 1) % 3; syncModes(); toast(['Repeat off', 'Repeat all', 'Repeat one'][repeat]); }
 function syncModes(){
   document.querySelectorAll('[data-role="shuffle"]').forEach(b => b.classList.toggle('on', shuffle));
+  document.querySelectorAll('[data-role="vibe"]').forEach(b => b.classList.toggle('on', vibe));
   document.querySelectorAll('[data-role="repeat"]').forEach(b => {
     b.classList.toggle('on', repeat > 0);
     b.querySelector('use').setAttribute('href', repeat === 2 ? '#i-repeat-one' : '#i-repeat');
@@ -2321,7 +2556,7 @@ function setPlaying(b){
 }
 function markNow(){
   const id = cur ? String(cur.id) : null;
-  document.querySelectorAll('[data-tid]').forEach(el => el.classList.toggle('now-playing', el.dataset.tid === id));
+  document.querySelectorAll('[data-tid]').forEach(el => el.classList.toggle('now-playing', el.dataset.list === 'queue' ? Number(el.dataset.i) === qi : el.dataset.tid === id));   // in the queue the exact position counts, so a song queued twice isn't lit twice
 }
 function onTrackChange(){
   const t = cur; if (!t) return;
@@ -2360,15 +2595,18 @@ function updateProgress(){
 }
 function bindDeck(el){
   const act = fn => (...a) => { if (el === audio) fn(...a); };
-  el.addEventListener('timeupdate', act(() => { updateProgress(); checkCrossfade(); cTick(); }));
+  el.addEventListener('timeupdate', act(() => { lPos = el.currentTime; lDur = el.duration; updateProgress(); checkCrossfade(); cTick(); }));
   el.addEventListener('loadedmetadata', act(updateProgress));
   el.addEventListener('play', act(() => setPlaying(true)));
   el.addEventListener('pause', act(() => { if (xf.on) killFade(); setPlaying(false); }));
   el.addEventListener('ended', act(() => advance(true)));
   el.addEventListener('error', act(() => {
     if (!el.getAttribute('src') || !cur) return;
+    if (cur.audioAlt && !cur._triedAlt) { cur._triedAlt = true; el.src = cur.audioAlt; const q = el.play(); if (q && q.catch) q.catch(() => {}); return; }   // first link failed: try the provider's own stream link once
     errStreak++;
-    toast("Couldn't play this song");
+    const code = el.error ? el.error.code : 0, why = code === 2 ? 'network problem' : code === 3 ? 'audio could not be decoded' : code === 4 ? 'source refused or unsupported' : 'unknown reason';
+    console.warn('Cadence playback error', { source: srcOf(cur), code, url: String(el.currentSrc || el.src).slice(0, 140) });
+    toast(`Couldn't play this ${SRC_LABEL[srcOf(cur)] || ''} song (${why})`.replace('  ', ' '));
     if (errStreak < 3 && queue.length > 1) setTimeout(() => { if (el.error) advance(true); }, 900);
   }));
 }
@@ -2401,14 +2639,33 @@ function moveTabInd(){
   i.style.width = t.offsetWidth + 'px'; i.style.transform = 'translateX(' + t.offsetLeft + 'px)';
 }
 window.addEventListener('resize', moveTabInd);
-function renderQueue(){
-  const el = $('queueRows');
+function renderQueue(keep){
+  const el = $('queueRows'), pane = $('pane-queue'), top = pane.scrollTop;
   if (!queue.length) { el.innerHTML = stateHTML('Queue is empty', 'Play something to fill it.'); return; }
   LISTS.queue = queue;
-  el.innerHTML = queue.map((t, i) => rowHTML(t, i, 'queue')).join('');
+  const sec = (label, extra) => `<div class="q-label"><span>${label}</span>${extra || ''}</div>`, row = (i, o) => rowHTML(queue[i], i, 'queue', o);
+  const up = []; for (let i = qi + 1; i < queue.length; i++) up.push(i);
+  const mine = up.filter(i => queue[i]._uq), rest = up.filter(i => !queue[i]._uq);
+  let h = '';
+  if (qi > 0) h += sec('Earlier') + queue.slice(0, qi).map((_, i) => row(i)).join('');
+  if (qi >= 0) h += sec('Now playing') + row(qi);
+  if (mine.length) h += sec('Next in your queue', '<button class="q-clear" data-act="qclear">Clear</button>') + mine.map(i => row(i, { q: 'mine' })).join('');
+  if (rest.length) h += sec(vibe ? 'Next up &middot; ' + (vibeNow() ? MOOD_LABEL[vibeNow()] + ' vibe' : 'vibe shuffle') : shuffle ? 'Next up &middot; shuffled' : 'Next up') + rest.map(i => row(i, { q: 'up' })).join('');
+  el.innerHTML = h;
   markNow();
-  const now = el.querySelector('.now-playing'); if (now) now.scrollIntoView({ block: 'center' });
+  if (keep) pane.scrollTop = top; else { const now = el.querySelector('.now-playing'); if (now) now.scrollIntoView({ block: 'center' }); }
 }
+const refreshQueue = keep => { if ($('pane-queue') && $('pane-queue').classList.contains('active')) renderQueue(keep); };
+function userQEnd(){ let k = qi + 1; while (k < queue.length && queue[k]._uq) k++; return k; }
+function queueAdd(id, where){   // 'next' = straight after this song; 'end' = after everything you have already queued
+  const t = findTrack(id); if (!t) return;
+  if (!cur || qi < 0 || !queue.length) { LISTS.single = [t]; playFrom('single', 0); toast('Playing now'); return; }
+  queue.splice(where === 'next' ? qi + 1 : userQEnd(), 0, { ...t, _uq: 1 }); xf.pre = null;
+  toast(where === 'next' ? 'Playing next' : 'Added to queue'); refreshQueue(true);
+}
+function queueRemove(i){ if (i > qi && queue[i]) { queue.splice(i, 1); xf.pre = null; refreshQueue(true); } }
+function queueTop(i){ if (i > qi + 1 && queue[i]) { const t = queue.splice(i, 1)[0]; queue.splice(qi + 1, 0, { ...t, _uq: 1 }); xf.pre = null; toast('Playing next'); refreshQueue(true); } else if (i === qi + 1) toast('Already next'); }
+function queueClearMine(){ const keep = queue.filter((t, i) => i <= qi || !t._uq); if (keep.length !== queue.length) { queue = keep; xf.pre = null; refreshQueue(true); } }
 
 /* Equalizer + sleep timer. The audio graph is only built when you touch the EQ, and only for
    sources that allow it, so it can never mute your music. */
@@ -2572,6 +2829,11 @@ document.addEventListener('click', e => {
     case 'like': toggleLike(d.id, el); break;
     case 'add': openAddSheet(d.id); break;
     case 'addto': addToPl(d.pl, addId); closeModal('addModal'); break;
+    case 'qnext': queueAdd(addId, 'next'); closeModal('addModal'); break;
+    case 'qend': queueAdd(addId, 'end'); closeModal('addModal'); break;
+    case 'qrm': queueRemove(Number(d.i)); break;
+    case 'qtop': queueTop(Number(d.i)); break;
+    case 'qclear': queueClearMine(); break;
     case 'artist': openArtist(d.artist); break;
     case 'genreq': setQuery(d.q); break;
     case 'rmpl': removeFromPl(d.pl, d.id); break;
