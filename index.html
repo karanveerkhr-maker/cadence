@@ -852,6 +852,7 @@ html{-webkit-tap-highlight-color:transparent;}
         <div class="chips" id="genreChips"></div>
         <div id="heroSlot"></div>
         <div class="section"><div class="section-head"><h2 class="h2">Made for you</h2></div><div class="mixes" id="mixes"></div></div>
+        <div class="section" id="tasteSection" style="display:none"><div class="section-head"><h2 class="h2" id="tasteTitle">Picked for you</h2><span class="flux">Learned from your listening</span></div><div class="rail" id="railTaste"></div></div>
         <div class="section" id="forYouSection" style="display:none">
           <div class="section-head"><h2 class="h2" id="forYouTitle">Made for you</h2></div>
           <div class="rail" id="railForYou"></div>
@@ -1728,6 +1729,7 @@ async function loadHome(){
   if (CUSTOM_TRACKS.length) { $('customSection').style.display = ''; renderRail('railCustom', 'custom', CUSTOM_TRACKS); }
   loadCommunity();
   loadJamRow('jmPunjabi', 'railJmPunjabi', 'jm-pj', 'punjabi', 'pa'); loadJamRow('jmBhangra', 'railJmBhangra', 'jm-bh', 'bhangra'); loadJamRow('jmHindi', 'railJmHindi', 'jm-hi', 'hindi', 'hi'); loadIaRow();
+  langBootstrap(); setTimeout(loadTasteRail, 3500); setTimeout(loadTasteRail, 9000);
   loadAudiusDesi(); loadJamParams('jmInstr', 'railJmInstr', 'jm-in', { vocalinstrumental: 'instrumental', order: 'popularity_month', limit: 24 });
   renderQuick();
   const b = timeBucket(); $('timeTitle').textContent = b.label;
@@ -1905,7 +1907,7 @@ function toggleLike(id, btn){
   id = String(id);
   const t = findTrack(id); if (!t) return;
   if (likes[id]) { delete likes[id]; toast('Removed from Liked Songs'); }
-  else { likes[id] = t; toast('Saved to Liked Songs'); tasteAdd(t, 2); }
+  else { likes[id] = (t._uq || t._af) ? (({ _uq, _af, ...r }) => r)(t) : t; toast('Saved to Liked Songs'); tasteAdd(t, 2); }
   lsSet('cadence_liked', likes);
   syncLikes();
   if (btn) { btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop'); }
@@ -2109,6 +2111,8 @@ function settingsHTML(){
         <button class="btn danger sm" data-act="clear" data-clear="playlists">Delete all</button></div>
       <div class="setting-row"><div><b>Vibe taste profile</b><div class="sub">What Vibe shuffle has learned from what you finish, skip and like. Stays on this device.</div></div>
         <button class="btn danger sm" data-act="clear" data-clear="taste">Reset</button></div>
+      <div class="setting-row"><div><b>Language taste</b><div class="sub">${esc(langSummary())}. Shuffle and "Picked for you" lean towards what you pick or keep playing.</div></div>
+        <div class="chips">${['pa', 'hi', 'en'].map(k => `<button class="chip ${langPin.includes(k) ? 'active' : ''}" data-act="langpin" data-l="${k}">${LANG_NAME[k]}</button>`).join('')}</div></div>
     </div>
     ${legalHTML()}<div class="settings-group">
       <div class="settings-group-title">About</div>
@@ -2121,7 +2125,7 @@ function clearData(kind){
   if (kind === 'recent') { recent = []; lsSet('cadence_recent', recent); }
   if (kind === 'likes') { likes = {}; lsSet('cadence_liked', likes); syncLikes(); }
   if (kind === 'playlists') { pls = []; savePls(); }
-  if (kind === 'taste') { taste = { m: {}, t: {}, n: 0 }; lsSet('cadence_taste', taste); }
+  if (kind === 'taste') { taste = { m: {}, t: {}, n: 0, l: {}, lb: 1 }; lsSet('cadence_taste', taste); LV.clear(); tasteRailSoon(); }
   toast(`Cleared ${labels[kind]}`);
   renderProfileView();
 }
@@ -2265,8 +2269,14 @@ const normTag = x => String(x || '').toLowerCase().replace(/&/g, 'n').replace(/[
 let vibe = lsGet('cadence_vibe', false) === true; if (vibe) shuffle = true;
 let taste = lsGet('cadence_taste', null); if (!taste || typeof taste !== 'object') taste = { m: {}, t: {}, n: 0 };
 let vLast = null, lPos = 0, lDur = 0;
+if (taste.l === undefined) taste.l = {};
 const VV = new Map(), VIBE_EXTRA = [], VIBE_FETCHED = new Map(), VSKIP = new Set();   // VSKIP = songs you skipped early, so the vibe stops following them
 
+function langBootstrap(){   // first run after this update: learn your language from songs you already liked and played
+  if (taste.lb) return; taste.lb = 1; taste.l = taste.l || {};
+  const add = (t, w) => { const L = langOf(t); if (L) taste.l[L] = (taste.l[L] || 0) + w; };
+  Object.values(likes).forEach(t => add(t, 2)); recent.forEach(t => add(t, 1)); lsSet('cadence_taste', taste);
+}
 function vibeVec(t){   // what we can tell about one song: a mood profile, its tags, tempo and language
   const key = String(t.id); if (VV.has(key)) return VV.get(key);
   const v = { sad: 0, calm: 0, happy: 0, energetic: 0, romantic: 0 }, tags = new Set((t.vt || []).map(normTag).filter(Boolean));
@@ -2316,8 +2326,81 @@ function vibeRef(){   // the vibe to continue: mostly the last few songs, a litt
   const parts = heard.map((t, i) => [t ? vibeVec(t) : null, wts[i] * (i > 0 && VSKIP.has(String(t.id)) ? .1 : 1)]), tv = tasteVec(); if (tv) parts.push([tv, .18]);
   return vibeBlend(parts);
 }
+/* ---------- Language taste: learns whether you mostly listen to Punjabi, Hindi or English ---------- */
+const LANG_NAME = { pa: 'Punjabi', hi: 'Hindi', en: 'English', o: 'Other languages' };
+const LANG_GROUP = { pa: 'pa', pu: 'pa', hi: 'hi', ur: 'hi', en: 'en' };
+const DESI_TAGS = { pa: ['punjabi', 'bhangra'], hi: ['hindi', 'bollywood', 'ghazal'] };
+const PA_WORDS = ['jatt', 'jatti', 'pind', 'bhangra', 'punjabi', 'sardaar', 'sardar', 'kudiye', 'munde', 'gabru', 'patiala', 'amritsar', 'chandigarh', 'putt', 'sohneya', 'sohna', 'sohni', 'balle', 'tumbi', 'dhol'];
+const HI_WORDS = ['hindi', 'bollywood', 'ghazal', 'qawwali', 'zindagi', 'dosti', 'mohabbat', 'pyaar', 'pyar', 'dilli', 'mumbai', 'kahani', 'sapna', 'sapne', 'barsaat'];
+const LV = new Map();
+function langOf(t){   // 'pa', 'hi', 'en', 'o' (another language) or '' (can't tell)
+  if (!t) return '';
+  const key = String(t.id); if (LV.has(key)) return LV.get(key);
+  const txt = String(t.title || '') + ' ' + String(t.artist || '').split('\u00B7')[0];
+  let r = '';
+  if (/[\u0A00-\u0A7F]/.test(txt)) r = 'pa';          // written in Gurmukhi
+  else if (/[\u0900-\u097F]/.test(txt)) r = 'hi';     // written in Devanagari
+  else {
+    const tags = (t.vt || []).map(normTag), words = txt.toLowerCase().match(/[a-z]+/g) || [];
+    if (tags.some(g => g === 'punjabi' || g === 'bhangra')) r = 'pa';
+    else if (tags.some(g => g === 'hindi' || g === 'bollywood' || g === 'ghazal' || g === 'qawwali')) r = 'hi';
+    else if (words.some(w => PA_WORDS.includes(w))) r = 'pa';
+    else if (words.some(w => HI_WORDS.includes(w))) r = 'hi';
+    else if (t.vl) r = LANG_GROUP[String(t.vl).slice(0, 2)] || 'o';   // the artist's own "lyrics language" setting
+  }
+  LV.set(key, r); if (LV.size > 2000) LV.delete(LV.keys().next().value);
+  return r;
+}
+let langPin = lsGet('cadence_langpin', []); if (!Array.isArray(langPin)) langPin = [];
+function langPref(){   // { share: {pa,hi,en,o}, strength 0..0.9, top } or null while it hasn't learned enough
+  const base = { pa: 0, hi: 0, en: 0, o: 0 }, l = taste.l || {};
+  Object.keys(base).forEach(k => { base[k] = Math.max(0, l[k] || 0); });
+  langPin.forEach(k => { if (k in base) base[k] += 5; });
+  const total = base.pa + base.hi + base.en + base.o; if (total < 3) return null;
+  const share = {}; Object.keys(base).forEach(k => { share[k] = base[k] / total; });
+  return { share, strength: Math.min(1, total / 10) * .9, top: Object.keys(share).sort((a, b) => share[b] - share[a])[0] };
+}
+function langMult(t, lp){   // >1 for the languages you listen to, <1 for the ones you don't; unknown stays neutral
+  if (!lp) return 1; const L = langOf(t); if (!L) return 1;
+  return (1 - lp.strength) + lp.strength * Math.min(3, lp.share[L] * 3.2);
+}
+function weightedPick(pool, n, wfn){   // random but favouring heavier songs, no repeats (Efraimidis-Spirakis)
+  return pool.map(t => ({ t, k: -Math.log(Math.random() || 1e-9) / Math.max(.01, wfn(t)) })).sort((a, b) => a.k - b.k).slice(0, n).map(x => x.t);
+}
+function desiOf(lp){ return lp && lp.strength > .25 ? ['pa', 'hi'].filter(k => lp.share[k] > .2).sort((a, b) => lp.share[b] - lp.share[a]) : []; }
+function langSummary(){
+  const lp = langPref(); if (!lp) return 'Still learning \u2014 play a few songs, or pick the languages you like.';
+  const parts = Object.keys(lp.share).filter(k => lp.share[k] >= .05).sort((a, b) => lp.share[b] - lp.share[a]).map(k => `${LANG_NAME[k]} ${Math.round(lp.share[k] * 100)}%`);
+  return (lp.share[lp.top] > .5 ? 'Mostly ' + LANG_NAME[lp.top] + ' \u00B7 ' : '') + parts.join(', ');
+}
+function toggleLangPin(k){
+  langPin = langPin.includes(k) ? langPin.filter(x => x !== k) : [...langPin, k]; lsSet('cadence_langpin', langPin);
+  if (view === 'profile') renderProfileView(); tasteRailSoon(); toast(langPin.length ? 'Language taste updated' : 'Language pins cleared');
+}
+let tasteTimer = null;
+function tasteRailSoon(){ clearTimeout(tasteTimer); tasteTimer = setTimeout(loadTasteRail, 900); }
+function loadTasteRail(){   // "Picked for you": songs we can already play, ranked by your language and mood taste
+  try {
+    const sec = $('tasteSection'); if (!sec) return;
+    const lp = langPref(), desi = desiOf(lp);
+    if (!lp || lp.strength < .25) { sec.style.display = 'none'; return; }
+    const seen = new Set(recent.slice(0, 12).map(t => String(t.id))); Object.keys(likes).forEach(id => seen.add(id));
+    const raw = [].concat(...Object.values(LISTS).filter(Array.isArray), VIBE_EXTRA), uniq = new Map();
+    raw.forEach(t => { if (playableTrack(t) && !seen.has(String(t.id)) && !uniq.has(String(t.id)) && t.src !== 'local') uniq.set(String(t.id), t); });
+    const tv = tasteVec(), pool = dedupeTracks([...uniq.values()]);
+    const w = t => langMult(t, lp) * (tv ? .7 + .6 * vibeSim(tv, vibeVec(t)) : 1);
+    const mine = pool.filter(t => langMult(t, lp) >= 1);   // only songs in a language you actually listen to
+    if (mine.length < 8) { if (desi.length) broadFetch(); }
+    if (mine.length < 6) { sec.style.display = 'none'; return; }
+    const list = smartOrder(weightedPick(mine, 20, w), null);
+    $('tasteTitle').textContent = lp.share[lp.top] > .5 ? `Picked for you \u00B7 more ${LANG_NAME[lp.top]}` : 'Picked for you';
+    sec.style.display = ''; renderRail('railTaste', 'taste', list);
+  } catch (e) { console.warn('Picked for you', e); }
+}
 function tasteAdd(t, w){   // +1 finished, +2 liked, -1 skipped early
   try {
+    const L = langOf(t);   // language taste is learned even when the mood of the song is unknown
+    if (L) { taste.l = taste.l || {}; Object.keys(taste.l).forEach(k => { taste.l[k] *= .97; }); taste.l[L] = Math.max(-3, (taste.l[L] || 0) + w); lsSet('cadence_taste', taste); tasteRailSoon(); }
     const x = vibeVec(t); if (!x.known) return;
     VMOODS.forEach(m => { taste.m[m] = Math.max(-3, (taste.m[m] || 0) * .97 + x.v[m] * w); });
     Object.keys(taste.t).forEach(g => { taste.t[g] *= .97; });
@@ -2326,45 +2409,105 @@ function tasteAdd(t, w){   // +1 finished, +2 liked, -1 skipped early
     taste.n = (taste.n || 0) + 1; lsSet('cadence_taste', taste);
   } catch (e) {}
 }
+const playableTrack = t => !!(t && t.id && !t.sp && t.src !== 'apple' && (t.audio || t.local));   // full songs Cadence can play itself (no Apple previews, no Spotify)
+function vibeAddExtra(results){   // put songs fetched in the background into the pool Vibe and Shuffle can draw from
+  const have = new Set(VIBE_EXTRA.map(t => String(t.id))); let added = 0;
+  results.forEach(x => { if (x.status === 'fulfilled') (x.value || []).forEach(t => { if (playableTrack(t) && !have.has(String(t.id))) { have.add(String(t.id)); VIBE_EXTRA.push(t); added++; } }); });
+  while (VIBE_EXTRA.length > 400) VIBE_EXTRA.shift();
+  return added;
+}
+function widePool(){   // everything playable that is NOT already in the queue: other rows, likes, history and background finds - not just the list you started from
+  const skip = new Set(queue.map(t => String(t.id))); recent.slice(0, 12).forEach(t => skip.add(String(t.id))); if (cur) skip.add(String(cur.id));
+  const raw = [].concat(...Object.values(LISTS).filter(Array.isArray), Object.values(likes), recent, VIBE_EXTRA), seen = new Set(), ok = [];
+  raw.forEach(t => { if (!playableTrack(t)) return; const id = String(t.id); if (skip.has(id) || seen.has(id)) return; seen.add(id); ok.push(t); });
+  return dedupeTracks(ok, queue);
+}
+const BROAD_TAGS = ['pop', 'rock', 'electronic', 'hiphop', 'jazz', 'folk', 'punjabi', 'hindi', 'instrumental', 'acoustic', 'chillout', 'classical', 'ambient', 'reggae', 'funk', 'indie'];
+async function broadFetch(){   // a few fresh genres from Jamendo and Audius trending, so shuffle never runs dry (at most once every 2 minutes)
+  if ((VIBE_FETCHED.get('broad') || 0) > Date.now() - 120000) return;
+  VIBE_FETCHED.set('broad', Date.now());
+  try {
+    const off = () => 20 * Math.floor(Math.random() * 5), desi = desiOf(langPref());
+    let picks = BROAD_TAGS.slice().sort(() => Math.random() - .5).slice(0, 3);
+    if (desi.length) picks = [...desi.flatMap(k => DESI_TAGS[k]).sort(() => Math.random() - .5).slice(0, 2), picks[0]];   // you listen to Punjabi/Hindi: look there first
+    const calls = picks.map(tg => jamendo('tracks', { tags: tg, limit: 20, order: 'popularity_month', offset: off() }).then(jamTracks));
+    desi.forEach(k => calls.push(jamendo('tracks', { lang: k, limit: 20, order: 'popularity_month', offset: off() }).then(jamTracks)));
+    calls.push(audiusFetch(desi.length ? '/tracks/search' : '/tracks/trending', desi.length ? { query: DESI_TAGS[desi[0]][0], limit: 20 } : { limit: 20 }));
+    const rs = await Promise.allSettled(calls);
+    if (vibeAddExtra(rs)) { if (vibe) vibeRebuild(); else autoFill(); }
+  } catch (e) {}
+}
+function autoFill(){   // plain shuffle: when only a few songs are left, quietly add more so it keeps going instead of stopping after the list you started from
+  try {
+    if (!shuffle || vibe || !queue.length || qi < 0) return;
+    const lp = langPref(), ahead = queue.slice(qi + 1);
+    // top up when the queue is running low, OR when you clearly prefer some languages and what's queued isn't them (e.g. shuffling an English list)
+    const mismatch = !!lp && lp.strength >= .4 && ahead.length > 0 && ahead.filter(t => langMult(t, lp) >= 1).length / ahead.length < .35;
+    if (ahead.length >= 8 && !mismatch) return;
+    const pool = widePool();
+    if (mismatch && pool.filter(t => langMult(t, lp) >= 1).length < 8) { broadFetch(); if (ahead.length >= 8) return; }
+    if (pool.length < 25) broadFetch();
+    if (!pool.length) return;
+    let picked = pool;   // favour the languages you listen to: if there are enough songs in them, use only those (and ones we can't place); otherwise just lean towards them
+    if (lp) { const good = pool.filter(t => langMult(t, lp) >= 1); picked = good.length >= 12 ? good : weightedPick(pool, 40, t => langMult(t, lp)); }
+    const add = smartOrder(picked, queue[qi]).slice(0, 25).map(t => ({ ...t, _af: true }));
+    const up = queue.slice(qi + 1), mine = up.filter(t => t._uq), rest = up.filter(t => !t._uq);
+    queue = [...queue.slice(0, qi + 1), ...mine, ...smartOrder([...rest, ...add], mine.length ? mine[mine.length - 1] : queue[qi])];   // blend the new songs in with the rest, so it is one shuffle, not "your list, then others"
+    xf.pre = null; refreshQueue(true);
+  } catch (e) { console.warn('Shuffle top-up', e); }
+}
 function vibePool(){   // every song we know about that can play in full right now, minus what was just heard
   const played = new Set(queue.slice(0, qi + 1).map(t => String(t.id))); recent.slice(0, 12).forEach(t => played.add(String(t.id))); if (cur) played.add(String(cur.id));
   const raw = [].concat(...Object.values(LISTS).filter(Array.isArray), Object.values(likes), recent, VIBE_EXTRA);
   const seen = new Set(), ok = [];
-  raw.forEach(t => { if (!t || !t.id || t.sp || t.src === 'apple' || !(t.audio || t.local)) return; const id = String(t.id); if (played.has(id) || seen.has(id)) return; seen.add(id); ok.push(t); });
+  raw.forEach(t => { if (!playableTrack(t)) return; const id = String(t.id); if (played.has(id) || seen.has(id)) return; seen.add(id); ok.push(t); });
   return dedupeTracks(ok, cur ? [cur] : []);
 }
 function vibeRebuild(){
   try {
     if (!vibe || !cur || qi < 0 || !queue.length) return;
     let r = vibeRef();
-    if (!r.known) return;   // nothing to go on yet (e.g. your own file with no tags): keep the normal shuffle order
+    if (!r.known) return;
+    const lp = langPref();   // nothing to go on yet (e.g. your own file with no tags): keep the normal shuffle order
     const mine = queue.slice(qi + 1).filter(t => t._uq), pool = vibePool(), out = [], used = new Set();
     let last = shufKey(mine.length ? mine[mine.length - 1] : cur), last2 = mine.length ? shufKey(cur) : '';
-    const good = pool.filter(t => vibeSim(r, vibeVec(t)) >= .35).length;
+    const ctx = curKey && curKey !== 'queue' ? new Set((LISTS[curKey] || []).map(t => String(t.id))) : new Set(); let ctxN = 0;   // the list you started from (e.g. your search results)
     for (let n = 0; n < 15; n++) {
       // mood fit decides; the same artist twice running is only discouraged (not banned), so a small pool never drags the mood off course
-      const c = pool.filter(t => !used.has(String(t.id))).map(t => { const k = shufKey(t); return { t, k, s: vibeSim(r, vibeVec(t)) * (1 - .15 * vibeDislike(t)) * (k === last ? .35 : k === last2 ? .7 : 1) }; });
+      const c = pool.filter(t => !used.has(String(t.id))).map(t => { const k = shufKey(t); return { t, k, s: vibeSim(r, vibeVec(t)) * (1 - .15 * vibeDislike(t)) * (k === last ? .35 : k === last2 ? .7 : 1) * (ctx.has(String(t.id)) && ctxN >= 5 ? .45 : 1) * Math.max(.5, Math.min(1.6, Math.sqrt(langMult(t, lp)))) }; });   // mood decides, language nudges   // after 5 from the starting list, favour songs from elsewhere
       if (!c.length) break;
       c.sort((a, b) => b.s - a.s); const top = c.slice(0, 5), w = top.map(x => Math.pow(x.s + .05, 3)), tot = w.reduce((a, b) => a + b, 0);
       let rnd = Math.random() * tot, pick = top[0]; for (let i = 0; i < top.length; i++) { rnd -= w[i]; if (rnd <= 0) { pick = top[i]; break; } }
-      out.push(pick.t); used.add(String(pick.t.id)); last2 = last; last = pick.k;
+      out.push(pick.t); used.add(String(pick.t.id)); last2 = last; last = pick.k; if (ctx.has(String(pick.t.id))) ctxN++;
       r = vibeBlend([[r, .6], [vibeVec(pick.t), .4]]);   // drift a little with each pick so it stays coherent without getting stuck on one shape
     }
     queue = [...queue.slice(0, qi + 1), ...mine, ...out]; xf.pre = null; refreshQueue(true);
-    if (good < 10) vibeFetch(vibeRef().main);   // not many matches around: go and find more songs in this mood
+    const mm = vibeRef().main; if (mm) vibeFetch(mm); vibeSeedFetch(cur);   // always look beyond what is on screen: more of this mood, and more like this song
   } catch (e) { console.warn('Vibe shuffle', e); }
 }
-async function vibeFetch(mood){
-  if (!mood || (VIBE_FETCHED.get(mood) || 0) > Date.now() - 600000) return;
-  VIBE_FETCHED.set(mood, Date.now());
+async function vibeFetch(mood){   // songs in this mood from the whole of Jamendo and Audius (once every 10 minutes per mood)
+  const key = 'mood:' + mood; if (!mood || (VIBE_FETCHED.get(key) || 0) > Date.now() - 600000) return;
+  VIBE_FETCHED.set(key, Date.now());
   try {
-    const lang = vibeRef().lang, calls = MOOD_FETCH[mood].map(tg => jamendo('tracks', { tags: tg, limit: 20, order: 'popularity_month' }));
-    if (lang === 'pa' || lang === 'hi') calls.push(jamendo('tracks', { lang, limit: 20, order: 'popularity_month' }));
+    const off = () => 20 * Math.floor(Math.random() * 5), desi = desiOf(langPref()), lang = desi[0] || vibeRef().lang, calls = MOOD_FETCH[mood].map(tg => jamendo('tracks', { tags: tg, limit: 20, order: 'popularity_month', offset: off() }));
+    if (lang === 'pa' || lang === 'hi') { calls.push(jamendo('tracks', { lang, limit: 20, order: 'popularity_month', offset: off() })); calls.push(jamendo('tracks', { lang, tags: MOOD_FETCH[mood][0], limit: 20, order: 'popularity_month' })); }   // your language + this mood
     const rs = await Promise.allSettled([...calls.map(c => c.then(jamTracks)), audiusFetch('/tracks/search', { query: mood === 'energetic' ? 'party' : mood, limit: 15 })]);
-    const have = new Set(VIBE_EXTRA.map(t => String(t.id))); let added = 0;
-    rs.forEach(x => { if (x.status === 'fulfilled') x.value.forEach(t => { if (!have.has(String(t.id))) { have.add(String(t.id)); VIBE_EXTRA.push(t); added++; } }); });
-    while (VIBE_EXTRA.length > 250) VIBE_EXTRA.shift();
-    if (added && vibe) vibeRebuild();
+    if (vibeAddExtra(rs) && vibe) vibeRebuild();
+  } catch (e) {}
+}
+const GENERIC_TAGS = new Set(['music', 'song', 'songs', 'vocal', 'male', 'female', 'other', 'various']);
+async function vibeSeedFetch(t){   // more songs like this one: its own tag, and its artist (at most once every 3 minutes)
+  if (!t || (VIBE_FETCHED.get('seed') || 0) > Date.now() - 180000) return;
+  const tag = (t.vt || []).map(x => String(x).trim()).find(x => x.length > 2 && !GENERIC_TAGS.has(normTag(x))), artist = String(t.artist || '').split('·')[0].trim();
+  const key = 'seed:' + normTag(tag || artist); if (!tag && !artist) return; if ((VIBE_FETCHED.get(key) || 0) > Date.now() - 600000) return;
+  VIBE_FETCHED.set(key, Date.now()); VIBE_FETCHED.set('seed', Date.now());
+  try {
+    const calls = [];
+    if (tag) calls.push(jamendo('tracks', { tags: tag.toLowerCase(), limit: 20, order: 'popularity_month', offset: 20 * Math.floor(Math.random() * 3) }).then(jamTracks));
+    if (artist) calls.push(jamendo('tracks', { search: artist, limit: 10 }).then(jamTracks));
+    calls.push(audiusFetch('/tracks/search', { query: tag || artist, limit: 12 }));
+    const rs = await Promise.allSettled(calls);
+    if (vibeAddExtra(rs) && vibe) vibeRebuild();
   } catch (e) {}
 }
 function vibeCommit(t){   // called whenever a new song starts: learn from the last one, then line up what fits next
@@ -2386,7 +2529,7 @@ function toggleVibe(){
   if (!vibe) {
     vibe = true; lsSet('cadence_vibe', true);
     if (!shuffle) { shuffle = true; shufBackup = queue.slice(qi + 1).filter(t => !t._uq); }   // remember the original order so turning Shuffle off can restore it
-    if (cur && qi >= 0) { vibeRebuild(); const m = vibeNow(); toast(m ? `Vibe shuffle on \u00B7 keeping it ${MOOD_LABEL[m].toLowerCase()}` : "Vibe shuffle on \u00B7 not enough info about this song yet, so it shuffles normally until it learns"); }
+    if (cur && qi >= 0) { vibeRebuild(); const m = vibeNow(); if (m) vibeFetch(m); vibeSeedFetch(cur); toast(m ? `Vibe shuffle on \u00B7 keeping it ${MOOD_LABEL[m].toLowerCase()}` : "Vibe shuffle on \u00B7 not enough info about this song yet, so it shuffles normally until it learns"); }
     else toast('Vibe shuffle on \u00B7 start a song and the queue will follow its mood');
   } else {
     vibe = false; lsSet('cadence_vibe', false);
@@ -2414,11 +2557,12 @@ function shuffleFrom(key){
 }
 function commitTrack(t){
   cur = t; errStreak = 0;
-  const rt = t._uq ? (({ _uq, ...r }) => r)(t) : t;   // the "queued by you" mark is only for the queue screen
+  const rt = (t._uq || t._af) ? (({ _uq, _af, ...r }) => r)(t) : t;   // the "queued by you" / "added automatically" marks are only for the queue screen
   recent = [rt, ...recent.filter(r => String(r.id) !== String(t.id))].slice(0, 30);
   lsSet('cadence_recent', recent);
   tailReshuffle();
   vibeCommit(t);
+  if (!vibe) autoFill();
   onTrackChange();
 }
 function load(t){
@@ -2519,11 +2663,12 @@ function toggleShuffle(){
     if (shuffle) { shufBackup = rest.slice(); queue = [...played, ...mine, ...smartOrder(rest, mine.length ? mine[mine.length - 1] : queue[qi])]; }
     else {
       const pos = new Map((shufBackup || []).map((t, k) => [String(t.id), k]));
-      const known = rest.filter(t => pos.has(String(t.id))).sort((a, b) => pos.get(String(a.id)) - pos.get(String(b.id))), extra = rest.filter(t => !pos.has(String(t.id)));
+      const known = rest.filter(t => pos.has(String(t.id))).sort((a, b) => pos.get(String(a.id)) - pos.get(String(b.id))), extra = rest.filter(t => !pos.has(String(t.id)) && !t._af);   // songs added automatically go away when shuffle is turned off
       queue = [...played, ...mine, ...known, ...extra]; shufBackup = null;
     }
     xf.pre = null;   // anything preloaded was for the old order
   }
+  if (shuffle && !vibe) autoFill();
   syncModes(); refreshQueue(); toast(shuffle ? 'Shuffle on' : 'Shuffle off');
 }
 function toggleRepeat(){ repeat = (repeat + 1) % 3; syncModes(); toast(['Repeat off', 'Repeat all', 'Repeat one'][repeat]); }
@@ -2650,7 +2795,7 @@ function renderQueue(keep){
   if (qi > 0) h += sec('Earlier') + queue.slice(0, qi).map((_, i) => row(i)).join('');
   if (qi >= 0) h += sec('Now playing') + row(qi);
   if (mine.length) h += sec('Next in your queue', '<button class="q-clear" data-act="qclear">Clear</button>') + mine.map(i => row(i, { q: 'mine' })).join('');
-  if (rest.length) h += sec(vibe ? 'Next up &middot; ' + (vibeNow() ? MOOD_LABEL[vibeNow()] + ' vibe' : 'vibe shuffle') : shuffle ? 'Next up &middot; shuffled' : 'Next up') + rest.map(i => row(i, { q: 'up' })).join('');
+  if (rest.length) h += sec(vibe ? 'Next up &middot; ' + (vibeNow() ? MOOD_LABEL[vibeNow()] + ' vibe' : 'vibe shuffle') : shuffle ? 'Next up &middot; shuffled' : 'Next up') + rest.map(i => row(i, { q: 'up', reason: queue[i]._af ? 'Added to keep the shuffle going' : undefined })).join('');
   el.innerHTML = h;
   markNow();
   if (keep) pane.scrollTop = top; else { const now = el.querySelector('.now-playing'); if (now) now.scrollIntoView({ block: 'center' }); }
@@ -2854,6 +2999,7 @@ document.addEventListener('click', e => {
     case 'sleep': setSleep(+d.min); break;
     case 'theme': applyTheme(d.theme); lsSet('cadence_theme', d.theme); break;
     case 'clear': clearData(d.clear); break;
+    case 'langpin': toggleLangPin(d.l); break;
     case 'eqresetp': setEQPreset('Flat'); toast('Equalizer reset'); break;
   }
 });
